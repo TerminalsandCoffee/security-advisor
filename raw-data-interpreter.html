@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WAF Raw Visit Interpreter</title>
+<style>
+  :root {
+    --bg:#0b1020; --panel:#121a2c; --panel2:#172238; --text:#eaf0ff;
+    --muted:#9fb0cc; --line:#263652; --accent:#7aa2ff; --good:#69d59a;
+    --warn:#f4c76b; --bad:#ff7f8f; --chip:#1d2b47;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; font-family:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
+    background:linear-gradient(180deg,#080d19 0%,var(--bg) 100%); color:var(--text);
+  }
+  .wrap { max-width:1180px; margin:0 auto; padding:28px 18px 56px; }
+  h1 { margin:0 0 6px; font-size:30px; }
+  .sub { color:var(--muted); margin-bottom:20px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .panel {
+    background:rgba(18,26,44,.94); border:1px solid var(--line); border-radius:16px;
+    padding:18px; box-shadow:0 12px 36px rgba(0,0,0,.18);
+  }
+  .panel h2 { font-size:16px; margin:0 0 12px; }
+  .drop {
+    border:1.5px dashed #40557c; border-radius:12px; padding:24px; text-align:center;
+    color:var(--muted); cursor:pointer; transition:.15s; background:#0e1627;
+  }
+  .drop.drag { border-color:var(--accent); background:#111d34; }
+  textarea {
+    width:100%; min-height:245px; resize:vertical; background:#0d1423; color:#dfe8fb;
+    border:1px solid var(--line); border-radius:12px; padding:12px; margin-top:12px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px;
+  }
+  button {
+    border:0; border-radius:10px; padding:11px 16px; font-weight:700; cursor:pointer;
+    background:var(--accent); color:#071022; margin-top:12px;
+  }
+  button.secondary { background:#21314f; color:var(--text); margin-left:8px; }
+  .status { margin-top:10px; color:var(--muted); font-size:13px; }
+  .cards { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:16px 0; }
+  .card { background:var(--panel2); border:1px solid var(--line); padding:14px; border-radius:12px; }
+  .num { font-size:23px; font-weight:800; }
+  .label { font-size:12px; color:var(--muted); margin-top:2px; }
+  .summary {
+    padding:14px; background:#0f1829; border:1px solid var(--line); border-radius:12px; line-height:1.55;
+  }
+  .chip { display:inline-block; padding:4px 8px; margin:3px 4px 3px 0; background:var(--chip); border-radius:999px; font-size:12px; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th,td { text-align:left; padding:9px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); position:sticky; top:0; background:var(--panel); }
+  .tablewrap { max-height:450px; overflow:auto; border:1px solid var(--line); border-radius:12px; }
+  details { margin-top:12px; }
+  summary { cursor:pointer; color:#c9d6ef; }
+  pre { white-space:pre-wrap; word-break:break-word; background:#0b1322; padding:12px; border-radius:10px; border:1px solid var(--line); }
+  .good{color:var(--good)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+  .full { grid-column:1 / -1; }
+  .note { color:var(--muted); font-size:12px; line-height:1.5; margin-top:12px; }
+  @media(max-width:850px){ .grid{grid-template-columns:1fr}.cards{grid-template-columns:repeat(2,1fr)} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>WAF Raw Visit Interpreter</h1>
+  <div class="sub">Drop exported raw visit/session/action data or paste it below, then click <b>Interpret Data</b>.</div>
+
+  <div class="grid">
+    <section class="panel">
+      <h2>1. Load raw data</h2>
+      <div id="drop" class="drop">
+        <b>Drop one or more export files here</b><br/>
+        <span>or click to select files</span>
+        <input id="file" type="file" multiple hidden />
+      </div>
+      <textarea id="input" placeholder='Paste JSON, a JSON array, or newline-delimited JSON here...'></textarea>
+      <button id="analyze">Interpret Data</button>
+      <button id="clear" class="secondary">Clear</button>
+      <div id="status" class="status">Everything runs locally in your browser.</div>
+    </section>
+
+    <section class="panel">
+      <h2>2. Plain-English interpretation</h2>
+      <div id="summary" class="summary">Load data to generate a session-level explanation.</div>
+      <div class="note">
+        This tool describes what the export contains. It does not make a final malicious/benign determination by itself.
+        Always correlate with the WAF console, policy configuration, timestamps, and application context.
+      </div>
+    </section>
+
+    <section class="panel full">
+      <div class="cards">
+        <div class="card"><div id="cRecords" class="num">0</div><div class="label">Records</div></div>
+        <div class="card"><div id="cSessions" class="num">0</div><div class="label">Session-like records</div></div>
+        <div class="card"><div id="cSecurity" class="num">0</div><div class="label">Security/action records</div></div>
+        <div class="card"><div id="cUnique" class="num">0</div><div class="label">Unique visitor/session IDs</div></div>
+      </div>
+
+      <h2>Important signals</h2>
+      <div id="signals"><span class="chip">No data yet</span></div>
+
+      <h2 style="margin-top:18px">Normalized timeline</h2>
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Time</th><th>Client IP</th><th>Method</th><th>URL / Path</th>
+              <th>Result / Action</th><th>Alert / Rule</th><th>Visitor / Session</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+
+      <details>
+        <summary>Field glossary detected in this export</summary>
+        <div id="glossary"></div>
+      </details>
+
+      <details>
+        <summary>Parsed JSON</summary>
+        <pre id="parsed"></pre>
+      </details>
+    </section>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let loadedFiles = [];
+
+const fieldMeaning = {
+  siteid: "Site identifier.",
+  clientip: "Client/source IP seen for the request or session.",
+  clientipex: "Client/source IP field present in this export.",
+  method: "HTTP request method such as GET or POST.",
+  url: "Requested URL or resource.",
+  referer: "HTTP Referer value, when supplied.",
+  useragent: "Client User-Agent string.",
+  visitorclappid: "Visitor classification identifier.",
+  visitorid: "Visitor identifier associated with the activity.",
+  sessionid: "Session identifier associated with the activity.",
+  requestresult: "WAF request handling/result value.",
+  reqresult: "WAF request handling/result value.",
+  alerttype: "Security alert type associated with the event.",
+  alertstage: "Stage in request processing where the alert was generated.",
+  ruleid: "Identifier of the rule involved in the security action.",
+  ruleaction: "Action associated with the matching rule.",
+  captchasupport: "Observed CAPTCHA support/state for the client.",
+  cookiesupport: "Observed cookie support/state for the client.",
+  jssupport: "Observed JavaScript support/state for the client.",
+  countrycode: "Country code derived for the client.",
+  city: "City derived for the client.",
+  starttime: "Session/event start timestamp.",
+  endtime: "Session/event end timestamp.",
+  updatetime: "Timestamp when the record was last updated.",
+  responsetime: "Observed response timing field, if supplied.",
+  statuscode: "HTTP response status code, if supplied."
+};
+
+function canonicalKey(obj, candidates) {
+  const keys = Object.keys(obj || {});
+  const found = keys.find(k => candidates.includes(k.toLowerCase()));
+  return found ? obj[found] : undefined;
+}
+function deepFind(obj, candidates, depth=0) {
+  if (!obj || typeof obj !== "object" || depth > 4) return undefined;
+  const direct = canonicalKey(obj, candidates);
+  if (direct !== undefined && direct !== null && direct !== "") return direct;
+  for (const v of Object.values(obj)) {
+    if (v && typeof v === "object") {
+      const hit = deepFind(v, candidates, depth+1);
+      if (hit !== undefined && hit !== null && hit !== "") return hit;
+    }
+  }
+}
+function flattenObjects(value, out=[]) {
+  if (Array.isArray(value)) {
+    value.forEach(v => flattenObjects(v, out));
+  } else if (value && typeof value === "object") {
+    out.push(value);
+  }
+  return out;
+}
+function parseLoose(text) {
+  const t = text.trim();
+  if (!t) return [];
+  try { return flattenObjects(JSON.parse(t)); } catch(e) {}
+
+  // NDJSON / one JSON object or array per line
+  let items = [];
+  let ok = 0;
+  for (const line of t.split(/\r?\n/)) {
+    const s = line.trim().replace(/,$/,"");
+    if (!s) continue;
+    try {
+      const parsed = JSON.parse(s);
+      flattenObjects(parsed, items); ok++;
+    } catch(e) {}
+  }
+  if (ok && items.length) return items;
+
+  // Salvage concatenated top-level JSON objects by balanced brace scanning.
+  items = [];
+  let start=-1, depth=0, inStr=false, esc=false;
+  for (let i=0;i<t.length;i++) {
+    const ch=t[i];
+    if (inStr) {
+      if (esc) esc=false;
+      else if (ch==="\\") esc=true;
+      else if (ch==='"') inStr=false;
+      continue;
+    }
+    if (ch==='"') { inStr=true; continue; }
+    if (ch==="{") { if(depth===0) start=i; depth++; }
+    else if (ch==="}") {
+      depth--;
+      if (depth===0 && start>=0) {
+        try { items.push(JSON.parse(t.slice(start,i+1))); } catch(e) {}
+        start=-1;
+      }
+    }
+  }
+  if (items.length) return items;
+  throw new Error("Could not parse the input as JSON, JSON array, NDJSON, or concatenated JSON objects.");
+}
+function safe(v) {
+  if (v === undefined || v === null || v === "") return "—";
+  if (typeof v === "object") return JSON.stringify(v);
+  return String(v);
+}
+function timeFmt(v) {
+  if (v === undefined || v === null || v === "") return "—";
+  let n = Number(v);
+  if (Number.isFinite(n)) {
+    if (String(Math.trunc(n)).length === 10) n *= 1000;
+    if (String(Math.trunc(n)).length >= 13) {
+      const d = new Date(n);
+      if (!isNaN(d)) return d.toLocaleString();
+    }
+  }
+  const d = new Date(v);
+  return isNaN(d) ? safe(v) : d.toLocaleString();
+}
+function get(rec, names) { return deepFind(rec, names.map(x=>x.toLowerCase())); }
+
+function normalize(rec, idx) {
+  const alert = get(rec,["alerttype","alert_type","attacktype","violation","violations"]);
+  const action = get(rec,["requestresult","reqresult","ruleaction","action","result"]);
+  const rule = get(rec,["ruleid","rule_id","rulename","rule_name"]);
+  const visit = get(rec,["visitorclappid","visitorid","sessionid","session_id","visitorclappidg"]);
+  const security = !!(alert || rule || action && /block|challenge|captcha|alert|rule|intrusive|attack/i.test(String(action)));
+  const sessionLike = !!(get(rec,["sessionid","visitorclappid","visitorid","starttime","endtime"]) && !security);
+  return {
+    idx: idx+1,
+    time: get(rec,["starttime","timestamp","eventtime","time","updatetime","endtime"]),
+    ip: get(rec,["clientip","clientipex","src","sourceip","ip"]),
+    method: get(rec,["method","requestmethod","httpmethod"]),
+    url: get(rec,["url","requesturl","path","uri"]),
+    action,
+    alert,
+    rule,
+    visit,
+    status: get(rec,["statuscode","httpstatus","responsecode","status"]),
+    country: get(rec,["countrycode","country"]),
+    captcha: get(rec,["captchasupport","captchapending","captchabyvisitor"]),
+    cookie: get(rec,["cookiesupport"]),
+    js: get(rec,["jssupport"]),
+    userAgent: get(rec,["useragent","user_agent"]),
+    security,
+    sessionLike,
+    raw: rec
+  };
+}
+function uniq(arr){ return [...new Set(arr.filter(v => v!==undefined && v!==null && v!=="").map(String))]; }
+
+function interpret(records) {
+  const n = records.map(normalize);
+  const ips = uniq(n.map(x=>x.ip));
+  const urls = uniq(n.map(x=>x.url));
+  const methods = uniq(n.map(x=>x.method));
+  const actions = uniq(n.map(x=>x.action));
+  const alerts = uniq(n.map(x=>x.alert));
+  const visitors = uniq(n.map(x=>x.visit));
+  const countries = uniq(n.map(x=>x.country));
+  const secCount = n.filter(x=>x.security).length;
+  const sessionCount = n.filter(x=>x.sessionLike).length;
+
+  $("cRecords").textContent = n.length;
+  $("cSessions").textContent = sessionCount;
+  $("cSecurity").textContent = secCount;
+  $("cUnique").textContent = visitors.length;
+
+  let pieces = [];
+  pieces.push(`<b>${n.length}</b> parsed record${n.length===1?"":"s"} were found.`);
+  if (visitors.length) pieces.push(`They reference <b>${visitors.length}</b> unique visitor/session identifier${visitors.length===1?"":"s"}.`);
+  if (ips.length) pieces.push(`Observed client IP${ips.length===1?"":"s"}: <b>${ips.slice(0,5).join(", ")}</b>${ips.length>5?" and others":""}.`);
+  if (methods.length || urls.length) pieces.push(`Traffic includes ${methods.length ? `<b>${methods.join(", ")}</b> requests` : "requests"}${urls.length ? ` to <b>${urls.length}</b> distinct URL/resource${urls.length===1?"":"s"}`:""}.`);
+  if (alerts.length || actions.length) {
+    pieces.push(`WAF security-processing fields are present${alerts.length ? `, including alert value${alerts.length===1?"":"s"} <b>${alerts.slice(0,4).join(", ")}</b>`:""}${actions.length ? ` and result/action value${actions.length===1?"":"s"} <b>${actions.slice(0,5).join(", ")}</b>`:""}.`);
+  } else {
+    pieces.push(`No obvious alert/result field was detected in the normalized view; this may be primarily session telemetry.`);
+  }
+  if (countries.length) pieces.push(`Geo-derived country value${countries.length===1?"":"s"}: <b>${countries.join(", ")}</b>.`);
+  pieces.push(`<span class="warn">Treat this as context, not a verdict:</span> a challenge, rule match, or alert value tells you how the WAF processed the request; it does not by itself prove the visitor was malicious.`);
+  $("summary").innerHTML = pieces.join(" ");
+
+  const chips = [];
+  if (methods.length) chips.push(`Methods: ${methods.join(", ")}`);
+  if (actions.length) actions.slice(0,6).forEach(x=>chips.push(`Result: ${x}`));
+  if (alerts.length) alerts.slice(0,6).forEach(x=>chips.push(`Alert: ${x}`));
+  if (ips.length) chips.push(`${ips.length} client IP${ips.length===1?"":"s"}`);
+  if (urls.length) chips.push(`${urls.length} URL/resource${urls.length===1?"":"s"}`);
+  if (countries.length) chips.push(`Geo: ${countries.join(", ")}`);
+  $("signals").innerHTML = chips.length ? chips.map(x=>`<span class="chip">${escapeHtml(x)}</span>`).join("") : `<span class="chip">No normalized signals detected</span>`;
+
+  $("rows").innerHTML = n.map(x => `
+    <tr>
+      <td>${x.idx}</td>
+      <td>${escapeHtml(timeFmt(x.time))}</td>
+      <td>${escapeHtml(safe(x.ip))}</td>
+      <td>${escapeHtml(safe(x.method))}</td>
+      <td>${escapeHtml(safe(x.url))}${x.status ? `<br><span class="label">HTTP ${escapeHtml(safe(x.status))}</span>`:""}</td>
+      <td>${escapeHtml(safe(x.action))}</td>
+      <td>${escapeHtml(safe(x.alert))}${x.rule ? `<br><span class="label">Rule: ${escapeHtml(safe(x.rule))}</span>`:""}</td>
+      <td>${escapeHtml(safe(x.visit))}</td>
+    </tr>`).join("");
+
+  // Field glossary
+  const keys = new Set();
+  records.forEach(r => Object.keys(r).forEach(k => keys.add(k)));
+  const glossaryRows = [...keys].sort().map(k => {
+    const meaning = fieldMeaning[k.toLowerCase()] || "Raw WAF export field. Kept visible for investigation; meaning may depend on export type/version.";
+    return `<tr><td><code>${escapeHtml(k)}</code></td><td>${escapeHtml(meaning)}</td></tr>`;
+  }).join("");
+  $("glossary").innerHTML = `<div class="tablewrap" style="max-height:300px"><table><thead><tr><th>Field</th><th>Interpretation</th></tr></thead><tbody>${glossaryRows}</tbody></table></div>`;
+  $("parsed").textContent = JSON.stringify(records, null, 2);
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+}
+
+async function process() {
+  try {
+    let all = [];
+    let sourceCount = 0;
+    for (const f of loadedFiles) {
+      const txt = await f.text();
+      all.push(...parseLoose(txt)); sourceCount++;
+    }
+    if ($("input").value.trim()) {
+      all.push(...parseLoose($("input").value)); sourceCount++;
+    }
+    if (!all.length) throw new Error("Add a file or paste raw data first.");
+    interpret(all);
+    $("status").innerHTML = `<span class="good">Parsed ${all.length} record${all.length===1?"":"s"} from ${sourceCount} source${sourceCount===1?"":"s"}.</span>`;
+  } catch(e) {
+    $("status").innerHTML = `<span class="bad">${escapeHtml(e.message)}</span>`;
+  }
+}
+
+$("drop").onclick = () => $("file").click();
+$("file").onchange = e => {
+  loadedFiles = [...e.target.files];
+  $("status").textContent = `${loadedFiles.length} file(s) ready: ${loadedFiles.map(f=>f.name).join(", ")}`;
+};
+["dragenter","dragover"].forEach(ev => $("drop").addEventListener(ev, e => { e.preventDefault(); $("drop").classList.add("drag"); }));
+["dragleave","drop"].forEach(ev => $("drop").addEventListener(ev, e => { e.preventDefault(); $("drop").classList.remove("drag"); }));
+$("drop").addEventListener("drop", e => {
+  loadedFiles = [...e.dataTransfer.files];
+  $("status").textContent = `${loadedFiles.length} file(s) ready: ${loadedFiles.map(f=>f.name).join(", ")}`;
+});
+$("analyze").onclick = process;
+$("clear").onclick = () => {
+  loadedFiles=[]; $("file").value=""; $("input").value="";
+  $("status").textContent="Everything runs locally in your browser.";
+  $("summary").textContent="Load data to generate a session-level explanation.";
+  ["cRecords","cSessions","cSecurity","cUnique"].forEach(id=>$(id).textContent="0");
+  $("signals").innerHTML='<span class="chip">No data yet</span>'; $("rows").innerHTML="";
+  $("glossary").innerHTML=""; $("parsed").textContent="";
+};
+</script>
+</body>
+</html>
