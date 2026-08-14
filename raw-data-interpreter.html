@@ -342,12 +342,24 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 }
 
+async function readFileAsText(file) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (bytes.length >= 2 && bytes[0] === 0xFF && bytes[1] === 0xFE) {
+    return new TextDecoder("utf-16le").decode(bytes.subarray(2));
+  }
+  if (bytes.length >= 2 && bytes[0] === 0xFE && bytes[1] === 0xFF) {
+    return new TextDecoder("utf-16be").decode(bytes.subarray(2));
+  }
+  const text = new TextDecoder("utf-8").decode(bytes);
+  return text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;
+}
+
 async function process() {
   try {
     let all = [];
     let sourceCount = 0;
     for (const f of loadedFiles) {
-      const txt = await f.text();
+      const txt = await readFileAsText(f);
       all.push(...parseLoose(txt)); sourceCount++;
     }
     if ($("input").value.trim()) {
