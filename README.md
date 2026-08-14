@@ -1,6 +1,6 @@
 # RAF's Command Center
 
-A single-file, offline kanban/scrum dashboard. No backend, no build step, no dependencies — open `index.html` in a browser and go.
+A single-file, offline kanban/scrum dashboard. No backend, no build step, no dependencies — open `kanban-scrum-board.html` in a browser and go.
 
 Built for quick-capture: when you remember a stray task, plop it into the box at the top and hit Enter (or press `/` anywhere to jump there) so it doesn't get lost.
 
@@ -19,9 +19,9 @@ Built for quick-capture: when you remember a stray task, plop it into the box at
 
 Everything is saved to the browser's `localStorage`, scoped to wherever the file is being served from. Two things worth knowing:
 
-- **Local file vs. GitHub Pages are separate origins.** If you open `index.html` directly (`file://...`) and later host this same repo on GitHub Pages, the hosted version starts with an empty board — they don't share storage. Use **Export** on one and **Import** on the other to move data across.
+- **Local file vs. GitHub Pages are separate origins.** If you open `kanban-scrum-board.html` directly (`file://...`) and later host this same repo on GitHub Pages, the hosted version starts with an empty board — they don't share storage. Use **Export** on one and **Import** on the other to move data across.
 - Clearing browser data/history for this origin will wipe the board. Export regularly.
 
 ## Usage
 
-Just open `index.html` in any modern browser. No server required.
+Just open `kanban-scrum-board.html` in any modern browser. No server required.
