@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Salesforce Contact Formatter</title>
+<style>
+  :root {
+    --bg:#0b1020; --panel:#121a2c; --panel2:#0d1423; --text:#eaf0ff;
+    --muted:#9fb0cc; --line:#263652; --accent:#7aa2ff; --accent2:#5a7fe0;
+    --good:#69d59a; --chip:#1d2b47;
+  }
+  * { box-sizing:border-box; }
+  html,body { height:100%; }
+  body {
+    margin:0; color:var(--text);
+    font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    background:linear-gradient(180deg,#080d19 0%,var(--bg) 100%);
+  }
+  .wrap { max-width:1280px; margin:0 auto; padding:24px 18px 40px; }
+  header h1 { margin:0 0 4px; font-size:24px; letter-spacing:.2px; }
+  header p { margin:0 0 20px; color:var(--muted); font-size:13.5px; }
+
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; }
+  @media (max-width:860px){ .grid { grid-template-columns:1fr; } }
+
+  .panel {
+    background:rgba(18,26,44,.94); border:1px solid var(--line);
+    border-radius:16px; padding:16px; box-shadow:0 12px 36px rgba(0,0,0,.18);
+    display:flex; flex-direction:column; min-height:0;
+  }
+  .panel h2 { font-size:14px; margin:0 0 10px; color:#c9d6ef; font-weight:700; }
+
+  textarea, pre.output {
+    width:100%; background:var(--panel2); color:#dfe8fb;
+    border:1px solid var(--line); border-radius:12px; padding:14px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:12.5px; line-height:1.55;
+  }
+  textarea { min-height:420px; resize:vertical; }
+  textarea::placeholder { color:#5f7093; }
+
+  pre.output {
+    margin:0; min-height:420px; max-height:640px; overflow:auto;
+    white-space:pre-wrap; word-break:break-word;
+  }
+  pre.output.empty { color:var(--muted); }
+
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:12px; }
+  .spacer { flex:1; }
+  button {
+    border:0; border-radius:10px; padding:10px 16px; font-weight:700;
+    cursor:pointer; font-size:13px; transition:.12s;
+  }
+  button.primary { background:var(--accent); color:#071022; }
+  button.primary:hover { background:var(--accent2); }
+  button.secondary { background:var(--chip); color:var(--text); }
+  button.secondary:hover { background:#26375a; }
+  button:active { transform:translateY(1px); }
+
+  .summary {
+    margin-top:12px; padding:10px 12px; border-radius:10px;
+    background:var(--panel2); border:1px solid var(--line);
+    color:var(--muted); font-size:12.5px; min-height:38px;
+    display:flex; align-items:center;
+  }
+  .summary b { color:var(--text); }
+  .summary .dot { color:#3f5478; margin:0 8px; }
+  .copied { color:var(--good); font-weight:700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Salesforce Contact Formatter</h1>
+    <p>Paste a raw block of copied Salesforce contacts, click <b>Format Contacts</b>, and get clean plain-text notes grouped by role. Runs entirely in your browser — nothing is uploaded.</p>
+  </header>
+
+  <div class="grid">
+    <!-- LEFT -->
+    <section class="panel">
+      <h2>Paste Salesforce Contacts</h2>
+      <textarea id="input" placeholder="Title:
+Information Security Engineer
+Contact Role:
+Email:
+donald.beitman@example.com
+
+Title:
+Executive VP &amp; Chief Technology Officer
+Contact Role:
+Inactive
+Email:
+jeff.mitchell@example.com"></textarea>
+      <div class="row">
+        <button id="format" class="primary">Format Contacts</button>
+        <button id="clear" class="secondary">Clear</button>
+      </div>
+    </section>
+
+    <!-- RIGHT -->
+    <section class="panel">
+      <h2>Formatted Output</h2>
+      <pre id="output" class="output empty">Formatted notes will appear here.</pre>
+      <div class="row">
+        <button id="copy" class="primary">Copy Output</button>
+        <span id="copyState" class="copied" style="display:none;">Copied!</span>
+      </div>
+      <div id="summary" class="summary">No contacts parsed yet.</div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+
+  // ---- Label configuration -------------------------------------------------
+  // Maps recognized Salesforce labels to a canonical field key.
+  var LABELS = {
+    "name": "name",
+    "full name": "name",
+    "contact": "name",
+    "contact name": "name",
+    "title": "title",
+    "job title": "title",
+    "contact role": "role",
+    "role": "role",
+    "email": "email",
+    "e-mail": "email",
+    "email address": "email",
+    "phone": "phone",
+    "phone number": "phone",
+    "mobile": "phone",
+    "direct": "phone",
+    "office": "phone"
+  };
+
+  var EMAIL_RE = /[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/;
+  // Detects a "Label:" prefix at the start of a line. The captured label is
+  // validated against LABELS below so arbitrary "word:" lines aren't consumed.
+  var LABEL_RE = /^([A-Za-z][A-Za-z /\-]*?)\s*:\s*(.*)$/;
+
+  function normLabel(raw) {
+    return raw.toLowerCase().replace(/\s+/g, " ").trim();
+  }
+  function stripMarkdown(v) {
+    // [text](url) -> text  (handles Salesforce/markdown email + phone links)
+    return String(v).replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").trim();
+  }
+  function cap(w) {
+    return w ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : w;
+  }
+  function deriveNameFromEmail(email) {
+    if (!email) return "";
+    var local = email.split("@")[0];
+    var parts = local.split(/[._\-+]+/)
+      .map(function (p) { return p.replace(/[0-9]+$/, ""); })
+      .filter(Boolean);
+    if (!parts.length) return "";
+    return parts.map(cap).join(" ");
+  }
+
+  // ---- Parsing -------------------------------------------------------------
+  // 1) Walk lines, turning them into ordered {label, value} pairs. A standalone
+  //    "Label:" takes its value from the following free-text line. Values always
+  //    attach to their explicit label, so nothing is guessed by position.
+  function toPairs(text) {
+    var lines = text.split(/\r?\n/);
+    var pairs = [];
+    var pending = null; // a label awaiting its value on a later line
+
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].replace(/\t/g, " ").trim();
+      if (line === "") continue;
+
+      var m = line.match(LABEL_RE);
+      var key = m ? LABELS[normLabel(m[1])] : undefined;
+
+      if (m && key) {
+        // Encountered a new label. If one was pending with no value yet, record
+        // it as empty (the field was present but blank).
+        if (pending) { pairs.push({ label: pending, value: "" }); pending = null; }
+        var inline = stripMarkdown(m[2]);
+        if (inline !== "") {
+          pairs.push({ label: key, value: inline });
+        } else {
+          pending = key;
+        }
+      } else {
+        // Free-text line: it's the value for the pending label, if any.
+        if (pending) {
+          pairs.push({ label: pending, value: stripMarkdown(line) });
+          pending = null;
+        }
+        // Otherwise it's an orphan line with no label — ignored on purpose to
+        // avoid associating it with the wrong contact.
+      }
+    }
+    if (pending) pairs.push({ label: pending, value: "" });
+    return pairs;
+  }
+
+  // 2) Group pairs into contacts. A repeated label signals the next record.
+  function toContacts(pairs) {
+    var contacts = [];
+    var cur = null;
+
+    function flush() {
+      if (!cur) return;
+      var cleaned = {};
+      var has = false;
+      ["name", "title", "role", "email", "phone"].forEach(function (k) {
+        var v = (cur[k] || "").trim();
+        if (v) { cleaned[k] = v; has = true; }
+      });
+      if (has) contacts.push(cleaned);
+      cur = null;
+    }
+
+    pairs.forEach(function (p) {
+      if (cur && Object.prototype.hasOwnProperty.call(cur, p.label)) {
+        flush();
+      }
+      if (!cur) cur = {};
+      var value = p.value;
+      if (p.label === "email") {
+        var em = value.match(EMAIL_RE);
+        value = em ? em[0] : value;
+      }
+      cur[p.label] = value;
+    });
+    flush();
+    return contacts;
+  }
+
+  // ---- Categorization ------------------------------------------------------
+  var SECTION_ORDER = [
+    "Economic Buyers",
+    "Security Leadership",
+    "Technical Contacts",
+    "Executive / Technology Leadership",
+    "Inactive Contacts",
+    "Other Contacts"
+  ];
+  var SHORT = {
+    "Economic Buyers": "Economic Buyers",
+    "Security Leadership": "Security Leadership",
+    "Technical Contacts": "Technical",
+    "Executive / Technology Leadership": "Executive",
+    "Inactive Contacts": "Inactive",
+    "Other Contacts": "Other"
+  };
+
+  // Classify a single text value (a role or a title). Returns a section or null.
+  function classify(text) {
+    var t = (text || "").toLowerCase();
+    if (!t) return null;
+    if (/economic buyer/.test(t)) return "Economic Buyers";
+    if (/\binactive\b/.test(t)) return "Inactive Contacts";
+    if (/\bciso\b|\bcso\b|security|cyber|infosec/.test(t)) return "Security Leadership";
+    if (/\bc[tio]o\b|\bceo\b|\bcoo\b|\bcfo\b|\bevp\b|chief\s+\w+\s+officer|chief (technology|information|executive)|executive|president/.test(t))
+      return "Executive / Technology Leadership";
+    if (/engineer|developer|devops|\bsre\b|architect|technical|technology|sysadmin|administrator|network|cloud|software|programmer|\bit\b|analyst/.test(t))
+      return "Technical Contacts";
+    return null;
+  }
+
+  function categorize(contact) {
+    // Contact Role takes precedence over any guess from the job title.
+    return classify(contact.role) || classify(contact.title) || "Other Contacts";
+  }
+
+  // ---- Output --------------------------------------------------------------
+  function displayName(c) {
+    return c.name || deriveNameFromEmail(c.email) || "";
+  }
+
+  function contactBlock(c) {
+    var lines = [];
+    var dn = displayName(c);
+    if (dn) lines.push(dn);
+    if (c.title) lines.push(c.title);
+    if (c.role) lines.push("Role: " + c.role);
+    if (c.email) lines.push("Email: " + c.email);
+    if (c.phone) lines.push("Phone: " + c.phone);
+    return lines.join("\n");
+  }
+
+  function build(contacts) {
+    var grouped = {};
+    SECTION_ORDER.forEach(function (s) { grouped[s] = []; });
+    contacts.forEach(function (c) { grouped[categorize(c)].push(c); });
+
+    var out = ["# CUSTOMER CONTACTS"];
+    SECTION_ORDER.forEach(function (section) {
+      var list = grouped[section];
+      if (!list.length) return;
+      out.push("");
+      out.push("## " + section);
+      list.forEach(function (c) {
+        out.push("");
+        out.push(contactBlock(c));
+      });
+    });
+
+    // Summary
+    var parts = [contacts.length + " contact" + (contacts.length === 1 ? "" : "s") + " parsed"];
+    SECTION_ORDER.forEach(function (section) {
+      var n = grouped[section].length;
+      if (n) parts.push(n + " " + SHORT[section]);
+    });
+
+    return { text: out.join("\n"), summaryParts: parts, total: contacts.length };
+  }
+
+  // ---- Wiring --------------------------------------------------------------
+  var lastOutput = "";
+
+  function renderSummary(parts) {
+    if (!parts || !parts.length) { $("summary").textContent = "No contacts parsed yet."; return; }
+    var html = "<b>" + parts[0] + "</b>";
+    for (var i = 1; i < parts.length; i++) {
+      html += '<span class="dot">•</span>' + parts[i];
+    }
+    $("summary").innerHTML = html;
+  }
+
+  function run() {
+    var raw = $("input").value;
+    var contacts = toContacts(toPairs(raw));
+    var result = build(contacts);
+    var outEl = $("output");
+
+    if (!result.total) {
+      lastOutput = "";
+      outEl.textContent = "No contacts found. Paste Salesforce contact data (with labels like Title:, Contact Role:, Email:) and click Format Contacts.";
+      outEl.classList.add("empty");
+      renderSummary(null);
+      return;
+    }
+    lastOutput = result.text;
+    outEl.textContent = result.text;
+    outEl.classList.remove("empty");
+    renderSummary(result.summaryParts);
+  }
+
+  function doCopy() {
+    if (!lastOutput) return;
+    var show = function () {
+      var s = $("copyState");
+      s.style.display = "inline";
+      setTimeout(function () { s.style.display = "none"; }, 1500);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(lastOutput).then(show, fallbackCopy);
+    } else {
+      fallbackCopy();
+    }
+    function fallbackCopy() {
+      var ta = document.createElement("textarea");
+      ta.value = lastOutput;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); show(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+
+  $("format").addEventListener("click", run);
+  $("copy").addEventListener("click", doCopy);
+  $("clear").addEventListener("click", function () {
+    $("input").value = "";
+    lastOutput = "";
+    var outEl = $("output");
+    outEl.textContent = "Formatted notes will appear here.";
+    outEl.classList.add("empty");
+    renderSummary(null);
+    $("input").focus();
+  });
+
+  // Ctrl/Cmd+Enter to format quickly.
+  $("input").addEventListener("keydown", function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); run(); }
+  });
+})();
+</script>
+</body>
+</html>
