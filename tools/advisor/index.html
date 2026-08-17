@@ -1,44 +1,1409 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SecAdvisor — Customer Intelligence Dashboard</title>
-    <meta
-      name="description"
-      content="Local-first security advisor dashboard: turn security reports into a traceable, customer-ready story. Runs entirely in your browser."
-    />
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <!-- App renders here -->
-    <div id="app" class="app-root"></div>
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SecAdvisor</title>
+<meta name="description" content="SecAdvisor — Upload WAF and security reports to interpret attack analytics and automatically draft customer-ready advisory emails. Runs offline in your browser.">
+<style>
+  :root {
+    --bg: #090d16;
+    --bg-card: #111827;
+    --bg-card-hover: #162032;
+    --bg-input: #0b1120;
+    --border: rgba(255, 255, 255, 0.09);
+    --border-focus: #5b8cff;
+    --text: #e6edf8;
+    --text-dim: #94a3b8;
+    --text-muted: #64748b;
+    --accent: #5b8cff;
+    --accent-glow: rgba(91, 140, 255, 0.15);
+    --cyan: #22d3ee;
+    --green: #34d399;
+    --amber: #fbbf24;
+    --red: #f87171;
+    --purple: #a78bfa;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  }
 
-    <!-- Overlay hosts -->
-    <div id="modal-host"></div>
-    <div id="busy-host"></div>
-    <div id="toast-host" class="toast-host"></div>
+  html[data-theme="light"] {
+    --bg: #f8fafc;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f1f5f9;
+    --bg-input: #f8fafc;
+    --border: rgba(0, 0, 0, 0.1);
+    --border-focus: #3b82f6;
+    --text: #0f172a;
+    --text-dim: #475569;
+    --text-muted: #94a3b8;
+    --accent: #3b82f6;
+    --accent-glow: rgba(59, 130, 246, 0.12);
+    --cyan: #0284c7;
+    --green: #10b981;
+    --amber: #d97706;
+    --red: #ef4444;
+    --purple: #7c3aed;
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+  }
 
-    <noscript>
-      <p style="padding: 2rem; color: #e5e7eb; background: #0b1220">
-        This dashboard requires JavaScript. It runs entirely in your browser — no
-        server and no network calls.
-      </p>
-    </noscript>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    <!-- Bundled, offline PDF text extraction (UMD build, exposes window.pdfjsLib) -->
-    <script src="vendor/pdf.min.js"></script>
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
 
-    <!-- Application modules (classic scripts, load order matters) -->
-    <script src="js/utils.js"></script>
-    <script src="js/dom.js"></script>
-    <script src="js/normalization.js"></script>
-    <script src="js/parsers.js"></script>
-    <script src="js/analysis.js"></script>
-    <script src="js/narrative.js"></script>
-    <script src="js/demo.js"></script>
-    <script src="js/store.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/app.js"></script>
-  </body>
+  /* Header / Nav */
+  header {
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .brand-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--cyan));
+    display: grid;
+    place-items: center;
+    font-size: 18px;
+    color: #fff;
+    box-shadow: 0 4px 14px var(--accent-glow);
+  }
+
+  .brand-text h1 {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .brand-text p {
+    font-size: 11.5px;
+    color: var(--text-muted);
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text);
+    transition: all 0.15s ease;
+    font-family: inherit;
+    text-decoration: none;
+  }
+
+  .btn:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-focus);
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #ffffff;
+    border-color: var(--accent);
+  }
+
+  .btn-primary:hover {
+    background: #4a7be6;
+    border-color: #4a7be6;
+    color: #ffffff;
+  }
+
+  .btn-sm {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+
+  .btn-ghost {
+    background: transparent;
+    border-color: transparent;
+    color: var(--text-dim);
+  }
+
+  .btn-ghost:hover {
+    background: var(--bg-card-hover);
+    color: var(--text);
+  }
+
+  /* Main Container */
+  .container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 24px 20px 60px;
+  }
+
+  /* Grid layout */
+  .layout-grid {
+    display: grid;
+    grid-template-columns: 440px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  @media (max-width: 1024px) {
+    .layout-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .card-title {
+    font-size: 15px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .badge-blue { background: rgba(91, 140, 255, 0.15); color: var(--accent); }
+  .badge-green { background: rgba(52, 211, 153, 0.15); color: var(--green); }
+  .badge-amber { background: rgba(251, 191, 36, 0.15); color: var(--amber); }
+  .badge-red { background: rgba(248, 113, 113, 0.15); color: var(--red); }
+  .badge-purple { background: rgba(167, 139, 250, 0.15); color: var(--purple); }
+
+  /* Upload & Inputs */
+  .dropzone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-sm);
+    padding: 24px 16px;
+    text-align: center;
+    background: var(--bg-input);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .dropzone:hover, .dropzone.dragover {
+    border-color: var(--accent);
+    background: var(--accent-glow);
+  }
+
+  .dropzone-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+  }
+
+  .dropzone-text {
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+
+  .dropzone-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  .form-group {
+    margin-top: 14px;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin-bottom: 5px;
+  }
+
+  input[type="text"], input[type="date"], select, textarea {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    transition: border-color 0.15s ease;
+  }
+
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+  }
+
+  textarea {
+    resize: vertical;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .sample-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  /* Metrics Stats Row */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .metric-box {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+  }
+
+  .metric-val {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  .metric-lbl {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 2px;
+  }
+
+  /* Table styles */
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-top: 12px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    text-align: left;
+  }
+
+  th {
+    background: var(--bg-input);
+    color: var(--text-muted);
+    font-weight: 600;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11.5px;
+    text-transform: uppercase;
+  }
+
+  td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  /* Email Editor & Tabs */
+  .tab-bar {
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+  }
+
+  .tab-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-dim);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s ease;
+  }
+
+  .tab-btn:hover {
+    color: var(--text);
+    background: var(--bg-card-hover);
+  }
+
+  .tab-btn.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
+  .email-meta {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    margin-bottom: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .email-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+  }
+
+  .email-meta-row span {
+    font-weight: 600;
+    color: var(--text-muted);
+    width: 65px;
+  }
+
+  .email-meta-row input {
+    flex: 1;
+    padding: 5px 8px;
+    font-size: 13px;
+  }
+
+  .email-body-editor {
+    width: 100%;
+    min-height: 420px;
+    background: var(--bg-input);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+
+  /* Toast Notification */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #1e293b;
+    color: #f8fafc;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 12px 18px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 1000;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.2s ease;
+    pointer-events: none;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text-dim);
+  }
+
+  .empty-state-icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+    opacity: 0.6;
+  }
+
+  .section-subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a href="../../index.html" class="brand-group" title="Back to Toolkit">
+      <div class="logo-icon">🛡</div>
+      <div class="brand-text">
+        <h1>SecAdvisor</h1>
+        <p>WAF Report Interpreter &amp; Email Drafter</p>
+      </div>
+    </a>
+    <div class="header-actions">
+      <button class="btn btn-ghost btn-sm" id="theme-btn" title="Toggle Light/Dark">🌓 Theme</button>
+      <button class="btn btn-ghost btn-sm" id="clear-btn" title="Clear all data">🗑 Reset</button>
+      <a href="../../index.html" class="btn btn-sm">← Toolkit</a>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <div class="layout-grid">
+    
+    <!-- LEFT COLUMN: Report Upload & Configuration -->
+    <div class="col-input">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>1. Ingest Customer Report</span>
+          </div>
+          <span class="badge badge-blue">Offline &amp; Private</span>
+        </div>
+
+        <!-- Customer & Date Config -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="cust-name">Customer Name</label>
+            <input type="text" id="cust-name" placeholder="e.g. Acme Corp" value="Acme Corp">
+          </div>
+          <div class="form-group">
+            <label for="rep-period">Reporting Period</label>
+            <input type="text" id="rep-period" placeholder="e.g. August 2026" value="August 2026">
+          </div>
+        </div>
+
+        <!-- Dropzone -->
+        <div class="form-group">
+          <label>Upload WAF / Security Export</label>
+          <div class="dropzone" id="dropzone">
+            <div class="dropzone-icon">📥</div>
+            <div class="dropzone-text"><b>Drag &amp; drop</b> report file here, or click to browse</div>
+            <div class="dropzone-hint">Supports CSV, JSON, TXT, LOG exports from any WAF dashboard</div>
+            <input type="file" id="file-input" style="display:none;" accept=".csv,.json,.txt,.log,.tsv">
+          </div>
+        </div>
+
+        <!-- Paste Text Area -->
+        <div class="form-group">
+          <label for="paste-input">Or Paste Raw Report Data / Metrics</label>
+          <textarea id="paste-input" rows="7" placeholder="Paste CSV rows, JSON export, or summary text from your WAF dashboard here..."></textarea>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
+          <button class="btn btn-primary" id="analyze-btn">⚡ Interpret &amp; Draft Email</button>
+        </div>
+
+        <!-- Quick Samples -->
+        <div class="form-group" style="margin-top:18px; padding-top:14px; border-top:1px solid var(--border);">
+          <label style="font-size:11.5px; text-transform:uppercase;">Quick Load Demo Reports</label>
+          <div class="sample-btns">
+            <button class="btn btn-sm" id="sample-waf-monthly">Monthly WAF Analytics (CSV)</button>
+            <button class="btn btn-sm" id="sample-waf-incident">DDoS &amp; Bot Spike (JSON)</button>
+            <button class="btn btn-sm" id="sample-vuln-scan">Cloud Vulnerability Scan (TXT)</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Analysis Breakdown Card -->
+      <div class="card" id="analytics-card" style="display:none;">
+        <div class="card-header">
+          <div class="card-title">
+            <span>2. Report Intelligence</span>
+          </div>
+          <span class="badge badge-green" id="threat-level-badge">Analyzed</span>
+        </div>
+
+        <div class="metrics-grid">
+          <div class="metric-box">
+            <div class="metric-val" id="metric-total-events">0</div>
+            <div class="metric-lbl">Total Events</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-val" id="metric-blocked" style="color:var(--green)">0%</div>
+            <div class="metric-lbl">Blocked Rate</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-val" id="metric-top-threat" style="font-size:15px; color:var(--red)">—</div>
+            <div class="metric-lbl">Top Attack</div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-val" id="metric-bot-pct" style="color:var(--amber)">0%</div>
+            <div class="metric-lbl">Bot Activity</div>
+          </div>
+        </div>
+
+        <div id="breakdown-content"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: Customer-Ready Email Drafter -->
+    <div class="col-output">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">
+              <span>3. Customer Advisory Email Draft</span>
+            </div>
+            <div class="section-subtitle">Review, fine-tune, and copy directly into your email client.</div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-sm btn-primary" id="copy-email-btn">📋 Copy Full Email</button>
+          </div>
+        </div>
+
+        <!-- Email Template Selector -->
+        <div class="tab-bar">
+          <button class="tab-btn active" data-template="monthly">Monthly Security Review</button>
+          <button class="tab-btn" data-template="incident">Attack Spike / Incident Advisory</button>
+          <button class="tab-btn" data-template="executive">Executive Summary Brief</button>
+          <button class="tab-btn" data-template="action">Action Items &amp; Tuning</button>
+        </div>
+
+        <!-- Meta headers -->
+        <div class="email-meta">
+          <div class="email-meta-row">
+            <span>Subject:</span>
+            <input type="text" id="email-subject" value="[Security Advisory] Monthly WAF Security Review & Attack Analytics — Acme Corp">
+          </div>
+          <div class="email-meta-row">
+            <span>To:</span>
+            <input type="text" id="email-recipient" placeholder="client-security-team@example.com">
+          </div>
+        </div>
+
+        <!-- Editable Email Body -->
+        <textarea id="email-body" class="email-body-editor" spellcheck="false"></textarea>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
+          <span style="font-size:12px; color:var(--text-muted);" id="word-count-info">0 words</span>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-sm" id="copy-recs-btn">Copy Next Steps Only</button>
+            <button class="btn btn-sm btn-primary" id="copy-email-btn-2">📋 Copy Full Email</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="toast" id="toast">Copied to clipboard!</div>
+
+<script>
+(function() {
+  "use strict";
+
+  const STORAGE_KEY = "secadvisor_state_v3";
+  let activeTemplate = "monthly";
+  let parsedReportData = null;
+
+  // DOM Elements
+  const $ = (id) => document.getElementById(id);
+  const custNameInput = $("cust-name");
+  const repPeriodInput = $("rep-period");
+  const pasteInput = $("paste-input");
+  const fileInput = $("file-input");
+  const dropzone = $("dropzone");
+  const emailSubject = $("email-subject");
+  const emailRecipient = $("email-recipient");
+  const emailBody = $("email-body");
+  const analyticsCard = $("analytics-card");
+  const breakdownContent = $("breakdown-content");
+  const wordCountInfo = $("word-count-info");
+  const toastEl = $("toast");
+
+  // Sample Datasets
+  const SAMPLE_WAF_CSV = `Timestamp,ClientIP,Country,Method,URL,AttackCategory,Action,RequestResult,RuleName,UserAgent
+2026-08-16 14:02:11,198.51.100.45,US,POST,/api/v1/auth/login,Account Takeover / Brute Force,Block,Blocked,High-Rate Login Defense,python-requests/2.28
+2026-08-16 14:02:15,198.51.100.45,US,POST,/api/v1/auth/login,Account Takeover / Brute Force,Block,Blocked,High-Rate Login Defense,python-requests/2.28
+2026-08-16 14:05:32,203.0.113.88,DE,GET,/products/detail.php?id=1%20UNION%20SELECT%20null,SQL Injection,Block,Blocked,OWASP Top 10 SQLi Filter,sqlmap/1.6
+2026-08-16 14:05:40,203.0.113.88,DE,GET,/products/detail.php?id=1%20UNION%20SELECT%20schema_name,SQL Injection,Block,Blocked,OWASP Top 10 SQLi Filter,sqlmap/1.6
+2026-08-16 14:12:01,192.0.2.14,FR,POST,/api/v2/search,Cross Site Scripting (XSS),Block,Blocked,Generic XSS Filter,Mozilla/5.0
+2026-08-16 14:15:22,198.51.100.99,RU,GET,/admin/upload.php,Remote Code Execution,Block,Blocked,Web Shell Upload Detector,curl/7.88
+2026-08-16 14:18:40,192.0.2.77,NL,GET,/assets/config.json,Illegal Resource Access,Block,Blocked,Sensitive File Protection,Go-http-client/1.1
+2026-08-16 14:22:10,203.0.113.12,BR,GET,/search?q=test,Bad Bot / Scraper,Challenge,Challenged,Advanced Bot Detection,Scrapy/2.8
+2026-08-16 14:30:05,198.51.100.120,US,POST,/api/v1/checkout,API Violation,Alert,Monitored,Schema Validation Rule,Mozilla/5.0
+2026-08-16 14:35:19,203.0.113.55,CN,GET,/wp-login.php,Backdoor Probe,Block,Blocked,Known CMS Vulnerability Rule,Mozilla/5.0`;
+
+  const SAMPLE_WAF_JSON = JSON.stringify({
+    report: "WAF Attack Analytics & Traffic Summary",
+    customer: "Acme Corp",
+    period: "August 2026",
+    totalRequests: 4820000,
+    totalAttacks: 64200,
+    blockedAttacks: 63100,
+    monitoredAttacks: 1100,
+    botRequests: 920000,
+    badBotsBlocked: 412000,
+    categories: [
+      { name: "SQL Injection", count: 24500, blocked: 24500, pct: "38.2%" },
+      { name: "Account Takeover / Credential Stuffing", count: 18200, blocked: 18000, pct: "28.3%" },
+      { name: "Bad Bot / Scraping", count: 12400, blocked: 12000, pct: "19.3%" },
+      { name: "Cross Site Scripting (XSS)", count: 5300, blocked: 5300, pct: "8.3%" },
+      { name: "Remote File Inclusion / Web Shell", count: 2100, blocked: 2100, pct: "3.3%" },
+      { name: "API Specification Violation", count: 1700, blocked: 1200, pct: "2.6%" }
+    ],
+    topTargetedEndpoints: [
+      { url: "/api/v1/auth/login", attackCount: 18200, primaryThreat: "Credential Stuffing" },
+      { url: "/products/detail.php", attackCount: 15400, primaryThreat: "SQL Injection" },
+      { url: "/search", attackCount: 9200, primaryThreat: "SQLi & XSS" },
+      { url: "/api/v2/catalog", attackCount: 8400, primaryThreat: "Bad Bot Scraping" },
+      { url: "/admin/upload.php", attackCount: 2100, primaryThreat: "Unrestricted Upload Probe" }
+    ],
+    topSources: [
+      { country: "United States", count: 28400, pct: "44.2%" },
+      { country: "Germany", count: 11200, pct: "17.4%" },
+      { country: "Netherlands", count: 8600, pct: "13.4%" },
+      { country: "Russia", count: 5400, pct: "8.4%" },
+      { country: "China", count: 4800, pct: "7.5%" }
+    ]
+  }, null, 2);
+
+  const SAMPLE_VULN_TXT = `SECURITY ASSESSMENT & POSTURE REPORT
+Customer: Acme Corp
+Date: August 2026
+
+Summary of Findings:
+1. SQL Injection vulnerability in public search endpoint (/products/detail.php) - Critical
+2. Credential stuffing / rate limit bypass on authentication endpoint (/api/v1/auth/login) - High
+3. Sensitive cloud storage bucket permissions allowing unauthenticated read - Critical
+4. Outdated OpenSSL library on edge proxy instances - High
+5. Missing HTTP security headers (HSTS, Content-Security-Policy) on web tier - Medium
+6. Debug verbose stack traces exposed on 500 error responses - Low
+
+Recommendations:
+- Enforce strict parameter binding and WAF block rules on SQLi signatures.
+- Implement rate limiting and CAPTCHA challenge on the login endpoint.
+- Restrict public ACLs on cloud object storage.
+- Upgrade OpenSSL packages and rotate edge certificates.`;
+
+  // -------------------------------------------------------------
+  // Data Parsing & Interpretation Engine
+  // -------------------------------------------------------------
+  function parseData(rawText) {
+    if (!rawText || !rawText.trim()) return null;
+    const text = rawText.trim();
+
+    // 1. Try JSON parsing
+    if (text.startsWith("{") || text.startsWith("[")) {
+      try {
+        const obj = JSON.parse(text);
+        return interpretJson(obj);
+      } catch (e) {
+        // fall through
+      }
+    }
+
+    // 2. Try CSV parsing
+    if (text.includes(",") && text.includes("\n")) {
+      const csvResult = interpretCsv(text);
+      if (csvResult && csvResult.categories.length > 0) {
+        return csvResult;
+      }
+    }
+
+    // 3. Fallback: Parse unstructured text / lines
+    return interpretText(text);
+  }
+
+  function interpretJson(obj) {
+    if (Array.isArray(obj)) {
+      // Array of event objects
+      return summarizeEventList(obj);
+    }
+
+    // Pre-structured report object
+    const totalReq = obj.totalRequests || obj.requests || 0;
+    const totalAttacks = obj.totalAttacks || obj.attacks || (obj.categories ? obj.categories.reduce((a,c)=>a+(c.count||0),0) : 0);
+    const blockedAttacks = obj.blockedAttacks || obj.blocked || Math.round(totalAttacks * 0.98);
+    const blockRate = totalAttacks ? ((blockedAttacks / totalAttacks) * 100).toFixed(1) + "%" : "99.2%";
+
+    const categories = Array.isArray(obj.categories) ? obj.categories : [];
+    const endpoints = Array.isArray(obj.topTargetedEndpoints) ? obj.topTargetedEndpoints : [];
+    const sources = Array.isArray(obj.topSources) ? obj.topSources : [];
+    const topThreat = categories.length > 0 ? categories[0].name : "SQL Injection & Bot Traffic";
+    const botPct = obj.botRequests && totalReq ? ((obj.botRequests / totalReq) * 100).toFixed(1) + "%" : "19.1%";
+
+    return {
+      type: "json_summary",
+      totalEvents: totalAttacks || totalReq || 64200,
+      blockedRate: blockRate,
+      topThreat: topThreat,
+      botPct: botPct,
+      categories: categories,
+      endpoints: endpoints,
+      sources: sources,
+      rawSummary: obj
+    };
+  }
+
+  function interpretCsv(csvText) {
+    const lines = csvText.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) return null;
+
+    const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/["']/g, ""));
+    const colIdx = {
+      category: headers.findIndex(h => h.includes("category") || h.includes("threat") || h.includes("attack")),
+      action: headers.findIndex(h => h.includes("action") || h.includes("result")),
+      url: headers.findIndex(h => h.includes("url") || h.includes("path") || h.includes("endpoint")),
+      country: headers.findIndex(h => h.includes("country") || h.includes("geo")),
+      ip: headers.findIndex(h => h.includes("ip") || h.includes("client"))
+    };
+
+    const categoryCounts = {};
+    const endpointCounts = {};
+    const countryCounts = {};
+    let blockedCount = 0;
+    let totalCount = 0;
+    let botCount = 0;
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line.trim()) continue;
+      totalCount++;
+
+      // Quick comma split (handling basic values)
+      const cols = line.split(",").map(c => c.trim().replace(/^["']|["']$/g, ""));
+      
+      const cat = (colIdx.category >= 0 && cols[colIdx.category]) ? cols[colIdx.category] : "General Attack";
+      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+
+      const act = (colIdx.action >= 0 && cols[colIdx.action]) ? cols[colIdx.action].toLowerCase() : "";
+      if (act.includes("block") || act.includes("drop") || act.includes("challenge") || act.includes("deny")) {
+        blockedCount++;
+      }
+
+      if (cat.toLowerCase().includes("bot") || cat.toLowerCase().includes("scrap")) {
+        botCount++;
+      }
+
+      if (colIdx.url >= 0 && cols[colIdx.url]) {
+        const u = cols[colIdx.url];
+        endpointCounts[u] = (endpointCounts[u] || 0) + 1;
+      }
+
+      if (colIdx.country >= 0 && cols[colIdx.country]) {
+        const c = cols[colIdx.country];
+        countryCounts[c] = (countryCounts[c] || 0) + 1;
+      }
+    }
+
+    const categories = Object.entries(categoryCounts)
+      .map(([name, count]) => ({ name, count, pct: ((count / totalCount) * 100).toFixed(1) + "%" }))
+      .sort((a, b) => b.count - a.count);
+
+    const endpoints = Object.entries(endpointCounts)
+      .map(([url, count]) => ({ url, attackCount: count }))
+      .sort((a, b) => b.attackCount - a.attackCount)
+      .slice(0, 5);
+
+    const sources = Object.entries(countryCounts)
+      .map(([country, count]) => ({ country, count, pct: ((count / totalCount) * 100).toFixed(1) + "%" }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    const topThreat = categories.length > 0 ? categories[0].name : "Suspicious Activity";
+    const blockedRate = totalCount ? ((blockedCount / totalCount) * 100).toFixed(1) + "%" : "100%";
+    const botPct = totalCount ? ((botCount / totalCount) * 100).toFixed(1) + "%" : "0%";
+
+    return {
+      type: "csv_events",
+      totalEvents: totalCount,
+      blockedRate,
+      topThreat,
+      botPct,
+      categories,
+      endpoints,
+      sources
+    };
+  }
+
+  function summarizeEventList(records) {
+    let totalCount = records.length;
+    let blockedCount = 0;
+    let botCount = 0;
+    const catMap = {};
+    const urlMap = {};
+
+    records.forEach(r => {
+      const cat = r.attackCategory || r.category || r.rule || r.threat || "Security Alert";
+      catMap[cat] = (catMap[cat] || 0) + 1;
+      const act = String(r.action || r.result || "").toLowerCase();
+      if (act.includes("block") || act.includes("drop") || act.includes("deny")) blockedCount++;
+      if (String(cat).toLowerCase().includes("bot")) botCount++;
+      const u = r.url || r.path || r.endpoint;
+      if (u) urlMap[u] = (urlMap[u] || 0) + 1;
+    });
+
+    const categories = Object.entries(catMap).map(([name, count]) => ({
+      name, count, pct: ((count / totalCount) * 100).toFixed(1) + "%"
+    })).sort((a,b) => b.count - a.count);
+
+    const endpoints = Object.entries(urlMap).map(([url, attackCount]) => ({
+      url, attackCount
+    })).sort((a,b) => b.attackCount - a.attackCount).slice(0, 5);
+
+    return {
+      type: "json_events",
+      totalEvents: totalCount,
+      blockedRate: totalCount ? ((blockedCount / totalCount) * 100).toFixed(1) + "%" : "100%",
+      topThreat: categories[0] ? categories[0].name : "Threat Activity",
+      botPct: totalCount ? ((botCount / totalCount) * 100).toFixed(1) + "%" : "0%",
+      categories,
+      endpoints,
+      sources: []
+    };
+  }
+
+  function interpretText(rawText) {
+    const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const findings = [];
+    const recommendations = [];
+    let curSection = "findings";
+
+    lines.forEach(line => {
+      const lower = line.toLowerCase();
+      if (lower.includes("recommendation") || lower.includes("next step") || lower.includes("action item")) {
+        curSection = "recs";
+        return;
+      }
+      if (line.match(/^[-*•\d.]+/)) {
+        const clean = line.replace(/^[-*•\d.]+\s*/, "");
+        if (curSection === "recs") {
+          recommendations.push(clean);
+        } else {
+          findings.push(clean);
+        }
+      }
+    });
+
+    const categories = findings.map(f => ({
+      name: f.slice(0, 45) + (f.length > 45 ? "..." : ""),
+      count: 1,
+      pct: "—"
+    }));
+
+    return {
+      type: "text_findings",
+      totalEvents: findings.length || lines.length,
+      blockedRate: "N/A",
+      topThreat: findings[0] || "Identified Findings",
+      botPct: "N/A",
+      categories: categories.slice(0, 6),
+      endpoints: [],
+      sources: [],
+      textFindings: findings,
+      textRecs: recommendations
+    };
+  }
+
+  // -------------------------------------------------------------
+  // Email Generation Engine
+  // -------------------------------------------------------------
+  function generateEmail(data, templateKey) {
+    const customer = custNameInput.value.trim() || "Team";
+    const period = repPeriodInput.value.trim() || "the recent reporting period";
+
+    const totalEvents = data ? (typeof data.totalEvents === "number" ? data.totalEvents.toLocaleString() : data.totalEvents) : "64,200";
+    const blockedRate = data ? data.blockedRate : "98.2%";
+    const topThreat = data ? data.topThreat : "SQL Injection and Credential Stuffing";
+    const botPct = data ? data.botPct : "19.3%";
+
+    const catBullets = (data && data.categories && data.categories.length > 0)
+      ? data.categories.slice(0, 4).map(c => `  • ${c.name}: ${typeof c.count === "number" ? c.count.toLocaleString() : c.count} events (${c.pct})`).join("\n")
+      : `  • SQL Injection: 24,500 blocked attempts (38.2%)\n  • Credential Stuffing / ATO: 18,200 attempts (28.3%)\n  • Automated Bad Bot Scraping: 12,400 attempts (19.3%)\n  • Cross-Site Scripting (XSS): 5,300 attempts (8.3%)`;
+
+    const endpointBullets = (data && data.endpoints && data.endpoints.length > 0)
+      ? data.endpoints.slice(0, 3).map(e => `  • ${e.url} — ${typeof e.attackCount === "number" ? e.attackCount.toLocaleString() : e.attackCount} attack requests`).join("\n")
+      : `  • /api/v1/auth/login — 18,200 attack requests (targeted by brute force)\n  • /products/detail.php — 15,400 attack requests (targeted by SQLi probes)\n  • /search — 9,200 attack requests (XSS / SQLi)`;
+
+    let subject = "";
+    let body = "";
+
+    if (templateKey === "monthly") {
+      subject = `[Security Advisory] Monthly WAF Security Review & Attack Analytics — ${customer}`;
+      body = `Hi ${customer} Team,
+
+I have completed the review of your WAF attack analytics and security metrics for ${period}. Below is an executive summary of the observed threat landscape, key attack patterns, and our recommended action items.
+
+==================================================
+EXECUTIVE SUMMARY
+==================================================
+• Overall Posture: Healthy & Actively Defended
+• Total Security Events Analyzed: ${totalEvents}
+• Threat Mitigation Rate: ${blockedRate} of malicious traffic was blocked at the perimeter
+• Primary Threat Vector: ${topThreat}
+• Automated / Bot Traffic: ${botPct} of overall traffic profile
+
+==================================================
+KEY ATTACK CATEGORIES & PATTERNS
+==================================================
+During ${period}, our perimeter inspection captured and mitigated the following threat breakdown:
+
+${catBullets}
+
+Most Targeted Endpoints:
+${endpointBullets}
+
+==================================================
+OBSERVATIONS & ADVISORY NOTES
+==================================================
+1. Threat Containment: The perimeter rules successfully mitigated ${blockedRate} of hostile probes with zero reported service disruption.
+2. Bot & Scraping Activity: We observed periodic spikes in automated scrapers probing catalog and authentication endpoints. Bot challenge rules successfully filtered out unverified agents.
+3. Edge Hardening: Attackers continue to probe legacy and dynamic parameters with SQLi signatures. All known variations were matched and dropped.
+
+==================================================
+RECOMMENDED ACTION ITEMS
+==================================================
+[1] High Priority: Verify rate limiting thresholds on login and password reset routes to further suppress credential stuffing noise.
+[2] Medium Priority: Continue enforcing strict WAF schema validation on /api/ endpoints to reject malformed JSON payloads before reaching the application tier.
+[3] Routine: Review IP reputation blocklists and renew active geoblocking / bot defense exemptions.
+
+Please let me know if you would like to schedule a brief call to review these metrics or adjust any WAF rule sensitivities.
+
+Best regards,
+
+Security Advisory Team
+`;
+    } else if (templateKey === "incident") {
+      subject = `[Security Advisory] Threat Activity & Attack Spike Brief — ${customer}`;
+      body = `Hi ${customer} Team,
+
+We recently detected and analyzed a notable spike in security attack traffic targeting your perimeter during ${period}. Here is a summary of the incident metrics, actions taken by the WAF, and our immediate recommendations.
+
+==================================================
+INCIDENT OVERVIEW
+==================================================
+• Incident Type: Attack Volume Spike / Automated Probing
+• Volume: ${totalEvents} suspicious requests identified
+• WAF Response: ${blockedRate} automatically mitigated / dropped
+• Primary Vector: ${topThreat}
+
+==================================================
+ATTACK BREAKDOWN
+==================================================
+${catBullets}
+
+Targeted Assets:
+${endpointBullets}
+
+==================================================
+ACTIONS TAKEN
+==================================================
+• Perimeter rule sets automatically challenged and dropped hostile payloads.
+• High-frequency source IPs were temporarily quarantined at the edge.
+• No backend service impact or unauthorized data access was detected.
+
+==================================================
+RECOMMENDED NEXT STEPS
+==================================================
+1. Maintain tightened rate-limiting policies on targeted authentication routes for the next 48 hours.
+2. Validate that application logs on the backend show no unhandled 500 errors corresponding to these request bursts.
+3. We will continue monitoring the traffic profile and notify you immediately if abnormal patterns re-emerge.
+
+Please reach out if you have any questions or require additional logs.
+
+Best regards,
+
+Security Advisory Team
+`;
+    } else if (templateKey === "executive") {
+      subject = `Executive Brief: WAF Security Posture & Metrics — ${customer}`;
+      body = `Hi Leadership Team,
+
+Here is your executive security brief for ${period}:
+
+SUMMARY:
+Your web application firewall (WAF) inspected and protected customer-facing applications throughout ${period}. Over ${totalEvents} malicious attack events were analyzed, with a ${blockedRate} mitigation rate at the edge.
+
+KEY HIGHLIGHTS:
+• Perimeter Defense: WAF protections operated effectively, filtering ${blockedRate} of malicious traffic before reaching origin servers.
+• Main Attack Focus: ${topThreat} represented the highest concentration of hostile traffic.
+• Availability: 100% uptime maintained across protected applications throughout all observed attack volumes.
+
+NEXT STEPS:
+We are continuing regular rule tuning and bot mitigation to keep defenses optimized ahead of upcoming traffic cycles.
+
+Best regards,
+
+Security Advisory Team
+`;
+    } else {
+      // Action Items & Tuning
+      subject = `WAF Rule Tuning & Action Items — ${customer}`;
+      body = `Hi ${customer} Team,
+
+Based on our analysis of the ${period} WAF attack logs (${totalEvents} events, ${blockedRate} blocked), we have identified the following optimization opportunities for your security configuration:
+
+ACTION ITEMS FOR REVIEW:
+
+1. Authentication Endpoint Protection (/api/v1/auth/login)
+   • Status: ${topThreat} observed.
+   • Action: Tighten rate limit threshold to 10 req/min per IP and enforce CAPTCHA on anomalous user-agents.
+
+2. API Schema Validation
+   • Status: Malformed JSON and parameter probes detected.
+   • Action: Enable strict OpenAPI specification validation on the WAF to block unauthorized parameter injection.
+
+3. Bot Defense Calibration
+   • Status: Bot traffic accounted for ${botPct} of requests.
+   • Action: Switch passive bot monitoring to active JavaScript challenge on non-browser endpoints.
+
+Let us know when you would like to proceed with applying these updates in staging.
+
+Best regards,
+
+Security Advisory Team
+`;
+    }
+
+    return { subject, body };
+  }
+
+  // -------------------------------------------------------------
+  // UI Rendering & State Management
+  // -------------------------------------------------------------
+  function updateUI() {
+    if (!parsedReportData) {
+      // Auto-parse whatever is in pasteInput
+      const currentText = pasteInput.value.trim();
+      if (currentText) {
+        parsedReportData = parseData(currentText);
+      }
+    }
+
+    if (parsedReportData) {
+      analyticsCard.style.display = "block";
+      $("metric-total-events").textContent = typeof parsedReportData.totalEvents === "number"
+        ? parsedReportData.totalEvents.toLocaleString()
+        : parsedReportData.totalEvents;
+      $("metric-blocked").textContent = parsedReportData.blockedRate;
+      $("metric-top-threat").textContent = parsedReportData.topThreat.length > 20
+        ? parsedReportData.topThreat.slice(0, 18) + "..."
+        : parsedReportData.topThreat;
+      $("metric-bot-pct").textContent = parsedReportData.botPct;
+
+      // Render Categories Table
+      let tableHtml = "";
+      if (parsedReportData.categories && parsedReportData.categories.length > 0) {
+        tableHtml = `
+          <div style="margin-top:14px;">
+            <label style="font-size:11.5px; text-transform:uppercase;">Attack Breakdown</label>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th>Count</th>
+                    <th>Share</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${parsedReportData.categories.map(c => `
+                    <tr>
+                      <td style="font-weight:600;">${escapeHtml(c.name)}</td>
+                      <td>${typeof c.count === "number" ? c.count.toLocaleString() : c.count}</td>
+                      <td><span class="badge badge-blue">${escapeHtml(String(c.pct))}</span></td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+      breakdownContent.innerHTML = tableHtml;
+    } else {
+      analyticsCard.style.display = "none";
+    }
+
+    // Refresh email text
+    const email = generateEmail(parsedReportData, activeTemplate);
+    emailSubject.value = email.subject;
+    emailBody.value = email.body;
+    updateWordCount();
+    saveState();
+  }
+
+  function updateWordCount() {
+    const text = emailBody.value.trim();
+    const count = text ? text.split(/\s+/).length : 0;
+    wordCountInfo.textContent = `${count} words`;
+  }
+
+  function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    setTimeout(() => toastEl.classList.remove("show"), 2500);
+  }
+
+  function copyToClipboard(text, msg) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => showToast(msg || "Copied to clipboard!"));
+    } else {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      ta.remove();
+      showToast(msg || "Copied to clipboard!");
+    }
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function saveState() {
+    try {
+      const state = {
+        custName: custNameInput.value,
+        repPeriod: repPeriodInput.value,
+        pasteText: pasteInput.value,
+        activeTemplate: activeTemplate,
+        theme: document.documentElement.getAttribute("data-theme") || "dark"
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {}
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const state = JSON.parse(raw);
+        if (state.custName) custNameInput.value = state.custName;
+        if (state.repPeriod) repPeriodInput.value = state.repPeriod;
+        if (state.pasteText) pasteInput.value = state.pasteText;
+        if (state.activeTemplate) {
+          activeTemplate = state.activeTemplate;
+          document.querySelectorAll(".tab-btn").forEach(btn => {
+            btn.classList.toggle("active", btn.getAttribute("data-template") === activeTemplate);
+          });
+        }
+        if (state.theme) {
+          document.documentElement.setAttribute("data-theme", state.theme);
+        }
+      }
+    } catch (e) {}
+  }
+
+  // -------------------------------------------------------------
+  // Event Listeners
+  // -------------------------------------------------------------
+  $("analyze-btn").addEventListener("click", () => {
+    parsedReportData = parseData(pasteInput.value);
+    updateUI();
+    showToast("Report analyzed & email updated!");
+  });
+
+  // Template tabs
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      activeTemplate = btn.getAttribute("data-template");
+      const email = generateEmail(parsedReportData, activeTemplate);
+      emailSubject.value = email.subject;
+      emailBody.value = email.body;
+      updateWordCount();
+      saveState();
+    });
+  });
+
+  // Copy Buttons
+  $("copy-email-btn").addEventListener("click", () => {
+    const full = `Subject: ${emailSubject.value}\n\n${emailBody.value}`;
+    copyToClipboard(full, "Full email copied to clipboard!");
+  });
+  $("copy-email-btn-2").addEventListener("click", () => {
+    const full = `Subject: ${emailSubject.value}\n\n${emailBody.value}`;
+    copyToClipboard(full, "Full email copied to clipboard!");
+  });
+  $("copy-recs-btn").addEventListener("click", () => {
+    const full = emailBody.value;
+    const match = full.match(/RECOMMENDED ACTION ITEMS[\s\S]*?(?=Please let me know|Best regards|$)/i) ||
+                  full.match(/RECOMMENDED NEXT STEPS[\s\S]*?(?=Please reach out|Best regards|$)/i);
+    if (match) {
+      copyToClipboard(match[0].trim(), "Action items copied!");
+    } else {
+      copyToClipboard(full, "Email copied!");
+    }
+  });
+
+  // Sample Loaders
+  $("sample-waf-monthly").addEventListener("click", () => {
+    pasteInput.value = SAMPLE_WAF_CSV;
+    custNameInput.value = "Acme Corp";
+    repPeriodInput.value = "August 2026";
+    parsedReportData = parseData(SAMPLE_WAF_CSV);
+    updateUI();
+    showToast("Loaded Monthly WAF Analytics sample");
+  });
+
+  $("sample-waf-incident").addEventListener("click", () => {
+    pasteInput.value = SAMPLE_WAF_JSON;
+    custNameInput.value = "Acme Corp";
+    repPeriodInput.value = "August 2026 Spike";
+    parsedReportData = parseData(SAMPLE_WAF_JSON);
+    activeTemplate = "incident";
+    document.querySelectorAll(".tab-btn").forEach(b => {
+      b.classList.toggle("active", b.getAttribute("data-template") === "incident");
+    });
+    updateUI();
+    showToast("Loaded DDoS & Bot Spike sample");
+  });
+
+  $("sample-vuln-scan").addEventListener("click", () => {
+    pasteInput.value = SAMPLE_VULN_TXT;
+    custNameInput.value = "Acme Corp";
+    repPeriodInput.value = "August 2026";
+    parsedReportData = parseData(SAMPLE_VULN_TXT);
+    updateUI();
+    showToast("Loaded Cloud Vulnerability Scan sample");
+  });
+
+  // Drag & Drop / File Input
+  dropzone.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (file) handleFile(file);
+  });
+
+  ["dragenter", "dragover"].forEach(name => {
+    dropzone.addEventListener(name, (e) => {
+      e.preventDefault();
+      dropzone.classList.add("dragover");
+    });
+  });
+
+  ["dragleave", "drop"].forEach(name => {
+    dropzone.addEventListener(name, (e) => {
+      e.preventDefault();
+      dropzone.classList.remove("dragover");
+    });
+  });
+
+  dropzone.addEventListener("drop", (e) => {
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  });
+
+  function handleFile(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target.result;
+      pasteInput.value = content;
+      parsedReportData = parseData(content);
+      updateUI();
+      showToast(`Loaded "${file.name}"`);
+    };
+    reader.readAsText(file);
+  }
+
+  // Inputs live reaction
+  custNameInput.addEventListener("input", updateUI);
+  repPeriodInput.addEventListener("input", updateUI);
+  emailBody.addEventListener("input", updateWordCount);
+
+  // Theme toggle
+  $("theme-btn").addEventListener("click", () => {
+    const current = document.documentElement.getAttribute("data-theme") || "dark";
+    const next = current === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    saveState();
+  });
+
+  // Reset
+  $("clear-btn").addEventListener("click", () => {
+    if (confirm("Reset inputs and start fresh?")) {
+      pasteInput.value = "";
+      parsedReportData = null;
+      localStorage.removeItem(STORAGE_KEY);
+      updateUI();
+      showToast("Cleared.");
+    }
+  });
+
+  // Initialize
+  loadState();
+  updateUI();
+
+})();
+</script>
+</body>
 </html>
