@@ -7,7 +7,9 @@
 (function (root) {
   const SA = (root.SA = root.SA || {});
   const U = SA.utils;
-  const KEY = "sec-advisor-store-v1";
+  // Bumped to v2 so any previously auto-seeded demo customers (Nimbus / Helios /
+  // Aurora) saved under v1 are dropped and the app starts empty.
+  const KEY = "sec-advisor-store-v2";
 
   const state = { customers: [], seeded: false };
   const listeners = new Set();
@@ -62,7 +64,9 @@
 
   function ensureSeeded() {
     if (state.seeded) return;
-    state.customers = SA.demo.buildDemoCustomers();
+    // Start empty — no fake demo customers auto-populate. Users can still opt in
+    // via the "Load demo data" button, which calls resetDemo().
+    state.customers = [];
     state.seeded = true;
     emit();
   }
