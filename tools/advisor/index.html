@@ -178,7 +178,7 @@
   /* Grid layout */
   .layout-grid {
     display: grid;
-    grid-template-columns: 440px 1fr;
+    grid-template-columns: 460px 1fr;
     gap: 24px;
     align-items: start;
   }
@@ -228,13 +228,12 @@
   .badge-green { background: rgba(52, 211, 153, 0.15); color: var(--green); }
   .badge-amber { background: rgba(251, 191, 36, 0.15); color: var(--amber); }
   .badge-red { background: rgba(248, 113, 113, 0.15); color: var(--red); }
-  .badge-purple { background: rgba(167, 139, 250, 0.15); color: var(--purple); }
 
   /* Upload & Inputs */
   .dropzone {
     border: 2px dashed var(--border);
     border-radius: var(--radius-sm);
-    padding: 24px 16px;
+    padding: 20px 16px;
     text-align: center;
     background: var(--bg-input);
     cursor: pointer;
@@ -247,8 +246,8 @@
   }
 
   .dropzone-icon {
-    font-size: 32px;
-    margin-bottom: 8px;
+    font-size: 28px;
+    margin-bottom: 6px;
   }
 
   .dropzone-text {
@@ -280,7 +279,7 @@
     margin-bottom: 5px;
   }
 
-  input[type="text"], input[type="date"], select, textarea {
+  input[type="text"], select, textarea {
     width: 100%;
     padding: 8px 12px;
     background: var(--bg-input);
@@ -315,27 +314,27 @@
   /* Metrics Stats Row */
   .metrics-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-    gap: 12px;
-    margin-bottom: 20px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
   }
 
   .metric-box {
     background: var(--bg-input);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: 12px;
+    padding: 10px 12px;
   }
 
   .metric-val {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 800;
     letter-spacing: -0.02em;
     color: var(--text);
   }
 
   .metric-lbl {
-    font-size: 11px;
+    font-size: 10.5px;
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -347,13 +346,14 @@
     overflow-x: auto;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    margin-top: 12px;
+    margin-top: 10px;
+    max-height: 240px;
   }
 
   table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 12.5px;
+    font-size: 12px;
     text-align: left;
   }
 
@@ -361,14 +361,16 @@
     background: var(--bg-input);
     color: var(--text-muted);
     font-weight: 600;
-    padding: 8px 12px;
+    padding: 8px 10px;
     border-bottom: 1px solid var(--border);
-    font-size: 11.5px;
+    font-size: 11px;
     text-transform: uppercase;
+    position: sticky;
+    top: 0;
   }
 
   td {
-    padding: 8px 12px;
+    padding: 7px 10px;
     border-bottom: 1px solid var(--border);
     color: var(--text);
   }
@@ -378,15 +380,16 @@
   /* Email Editor & Tabs */
   .tab-bar {
     display: flex;
-    gap: 8px;
+    flex-wrap: wrap;
+    gap: 6px;
     border-bottom: 1px solid var(--border);
     margin-bottom: 16px;
-    padding-bottom: 8px;
+    padding-bottom: 10px;
   }
 
   .tab-btn {
     background: transparent;
-    border: 1px solid transparent;
+    border: 1px solid var(--border);
     color: var(--text-dim);
     padding: 6px 12px;
     border-radius: var(--radius-sm);
@@ -412,7 +415,7 @@
     background: var(--bg-input);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: 12px;
+    padding: 10px 12px;
     margin-bottom: 14px;
     display: flex;
     flex-direction: column;
@@ -430,6 +433,7 @@
     font-weight: 600;
     color: var(--text-muted);
     width: 65px;
+    font-size: 12px;
   }
 
   .email-meta-row input {
@@ -440,14 +444,14 @@
 
   .email-body-editor {
     width: 100%;
-    min-height: 420px;
+    min-height: 480px;
     background: var(--bg-input);
     color: var(--text);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     padding: 16px;
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: 12.5px;
     line-height: 1.6;
     white-space: pre-wrap;
   }
@@ -478,18 +482,6 @@
   .toast.show {
     opacity: 1;
     transform: translateY(0);
-  }
-
-  .empty-state {
-    text-align: center;
-    padding: 48px 20px;
-    color: var(--text-dim);
-  }
-
-  .empty-state-icon {
-    font-size: 40px;
-    margin-bottom: 12px;
-    opacity: 0.6;
   }
 
   .section-subtitle {
@@ -557,15 +549,11 @@
         <!-- Paste Text Area -->
         <div class="form-group">
           <label for="paste-input">Or Paste Raw Report Data / Metrics</label>
-          <textarea id="paste-input" rows="7" placeholder="Paste CSV rows, JSON export, or summary text from your WAF dashboard here..."></textarea>
-        </div>
-
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
-          <button class="btn btn-primary" id="analyze-btn">⚡ Interpret &amp; Draft Email</button>
+          <textarea id="paste-input" rows="8" placeholder="Paste CSV rows, JSON export, security findings, or summary text from your WAF dashboard here..."></textarea>
         </div>
 
         <!-- Quick Samples -->
-        <div class="form-group" style="margin-top:18px; padding-top:14px; border-top:1px solid var(--border);">
+        <div class="form-group" style="margin-top:16px; padding-top:12px; border-top:1px solid var(--border);">
           <label style="font-size:11.5px; text-transform:uppercase;">Quick Load Demo Reports</label>
           <div class="sample-btns">
             <button class="btn btn-sm" id="sample-waf-monthly">Monthly WAF Analytics (CSV)</button>
@@ -594,7 +582,7 @@
             <div class="metric-lbl">Blocked Rate</div>
           </div>
           <div class="metric-box">
-            <div class="metric-val" id="metric-top-threat" style="font-size:15px; color:var(--red)">—</div>
+            <div class="metric-val" id="metric-top-threat" style="font-size:14px; color:var(--red)">—</div>
             <div class="metric-lbl">Top Attack</div>
           </div>
           <div class="metric-box">
@@ -615,7 +603,7 @@
             <div class="card-title">
               <span>3. Customer Advisory Email Draft</span>
             </div>
-            <div class="section-subtitle">Review, fine-tune, and copy directly into your email client.</div>
+            <div class="section-subtitle">Live auto-generated from your report data. Edit freely or copy below.</div>
           </div>
           <div style="display:flex; gap:8px;">
             <button class="btn btn-sm btn-primary" id="copy-email-btn">📋 Copy Full Email</button>
@@ -664,9 +652,8 @@
 (function() {
   "use strict";
 
-  const STORAGE_KEY = "secadvisor_state_v3";
+  const STORAGE_KEY = "secadvisor_state_v4";
   let activeTemplate = "monthly";
-  let parsedReportData = null;
 
   // DOM Elements
   const $ = (id) => document.getElementById(id);
@@ -720,13 +707,6 @@
       { url: "/search", attackCount: 9200, primaryThreat: "SQLi & XSS" },
       { url: "/api/v2/catalog", attackCount: 8400, primaryThreat: "Bad Bot Scraping" },
       { url: "/admin/upload.php", attackCount: 2100, primaryThreat: "Unrestricted Upload Probe" }
-    ],
-    topSources: [
-      { country: "United States", count: 28400, pct: "44.2%" },
-      { country: "Germany", count: 11200, pct: "17.4%" },
-      { country: "Netherlands", count: 8600, pct: "13.4%" },
-      { country: "Russia", count: 5400, pct: "8.4%" },
-      { country: "China", count: 4800, pct: "7.5%" }
     ]
   }, null, 2);
 
@@ -735,12 +715,12 @@ Customer: Acme Corp
 Date: August 2026
 
 Summary of Findings:
-1. SQL Injection vulnerability in public search endpoint (/products/detail.php) - Critical
-2. Credential stuffing / rate limit bypass on authentication endpoint (/api/v1/auth/login) - High
-3. Sensitive cloud storage bucket permissions allowing unauthenticated read - Critical
-4. Outdated OpenSSL library on edge proxy instances - High
-5. Missing HTTP security headers (HSTS, Content-Security-Policy) on web tier - Medium
-6. Debug verbose stack traces exposed on 500 error responses - Low
+- Critical: SQL Injection in public search endpoint (/products/detail.php)
+- High: Credential stuffing / rate limit bypass on authentication endpoint (/api/v1/auth/login)
+- Critical: Sensitive cloud storage bucket permissions allowing unauthenticated read
+- High: Outdated OpenSSL library on edge proxy instances
+- Medium: Missing HTTP security headers (HSTS, Content-Security-Policy) on web tier
+- Low: Debug verbose stack traces exposed on 500 error responses
 
 Recommendations:
 - Enforce strict parameter binding and WAF block rules on SQLi signatures.
@@ -760,30 +740,31 @@ Recommendations:
       try {
         const obj = JSON.parse(text);
         return interpretJson(obj);
-      } catch (e) {
-        // fall through
+      } catch (e) {}
+    }
+
+    // 2. Try Delimited Table parsing (CSV, TSV, Semicolon, Pipe)
+    const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+    if (lines.length >= 2) {
+      const firstLine = lines[0];
+      const sep = firstLine.includes(",") ? "," : firstLine.includes("\t") ? "\t" : firstLine.includes(";") ? ";" : firstLine.includes("|") ? "|" : null;
+      if (sep) {
+        const csvResult = interpretDelimited(lines, sep);
+        if (csvResult && csvResult.categories.length > 0) {
+          return csvResult;
+        }
       }
     }
 
-    // 2. Try CSV parsing
-    if (text.includes(",") && text.includes("\n")) {
-      const csvResult = interpretCsv(text);
-      if (csvResult && csvResult.categories.length > 0) {
-        return csvResult;
-      }
-    }
-
-    // 3. Fallback: Parse unstructured text / lines
-    return interpretText(text);
+    // 3. Fallback: Parse unstructured text / lines / logs
+    return interpretText(lines);
   }
 
   function interpretJson(obj) {
     if (Array.isArray(obj)) {
-      // Array of event objects
       return summarizeEventList(obj);
     }
 
-    // Pre-structured report object
     const totalReq = obj.totalRequests || obj.requests || 0;
     const totalAttacks = obj.totalAttacks || obj.attacks || (obj.categories ? obj.categories.reduce((a,c)=>a+(c.count||0),0) : 0);
     const blockedAttacks = obj.blockedAttacks || obj.blocked || Math.round(totalAttacks * 0.98);
@@ -791,39 +772,30 @@ Recommendations:
 
     const categories = Array.isArray(obj.categories) ? obj.categories : [];
     const endpoints = Array.isArray(obj.topTargetedEndpoints) ? obj.topTargetedEndpoints : [];
-    const sources = Array.isArray(obj.topSources) ? obj.topSources : [];
     const topThreat = categories.length > 0 ? categories[0].name : "SQL Injection & Bot Traffic";
     const botPct = obj.botRequests && totalReq ? ((obj.botRequests / totalReq) * 100).toFixed(1) + "%" : "19.1%";
 
     return {
-      type: "json_summary",
-      totalEvents: totalAttacks || totalReq || 64200,
+      totalEvents: totalAttacks || totalReq || 0,
       blockedRate: blockRate,
       topThreat: topThreat,
       botPct: botPct,
       categories: categories,
-      endpoints: endpoints,
-      sources: sources,
-      rawSummary: obj
+      endpoints: endpoints
     };
   }
 
-  function interpretCsv(csvText) {
-    const lines = csvText.split(/\r?\n/).filter(l => l.trim());
-    if (lines.length < 2) return null;
-
-    const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/["']/g, ""));
+  function interpretDelimited(lines, sep) {
+    const headers = lines[0].split(sep).map(h => h.trim().toLowerCase().replace(/["']/g, ""));
     const colIdx = {
-      category: headers.findIndex(h => h.includes("category") || h.includes("threat") || h.includes("attack")),
-      action: headers.findIndex(h => h.includes("action") || h.includes("result")),
-      url: headers.findIndex(h => h.includes("url") || h.includes("path") || h.includes("endpoint")),
-      country: headers.findIndex(h => h.includes("country") || h.includes("geo")),
-      ip: headers.findIndex(h => h.includes("ip") || h.includes("client"))
+      category: headers.findIndex(h => h.includes("category") || h.includes("threat") || h.includes("attack") || h.includes("rule") || h.includes("type")),
+      action: headers.findIndex(h => h.includes("action") || h.includes("result") || h.includes("status")),
+      url: headers.findIndex(h => h.includes("url") || h.includes("path") || h.includes("endpoint") || h.includes("uri")),
+      country: headers.findIndex(h => h.includes("country") || h.includes("geo"))
     };
 
     const categoryCounts = {};
     const endpointCounts = {};
-    const countryCounts = {};
     let blockedCount = 0;
     let totalCount = 0;
     let botCount = 0;
@@ -833,14 +805,13 @@ Recommendations:
       if (!line.trim()) continue;
       totalCount++;
 
-      // Quick comma split (handling basic values)
-      const cols = line.split(",").map(c => c.trim().replace(/^["']|["']$/g, ""));
+      const cols = line.split(sep).map(c => c.trim().replace(/^["']|["']$/g, ""));
       
-      const cat = (colIdx.category >= 0 && cols[colIdx.category]) ? cols[colIdx.category] : "General Attack";
+      const cat = (colIdx.category >= 0 && cols[colIdx.category]) ? cols[colIdx.category] : "Suspicious Activity";
       categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
 
       const act = (colIdx.action >= 0 && cols[colIdx.action]) ? cols[colIdx.action].toLowerCase() : "";
-      if (act.includes("block") || act.includes("drop") || act.includes("challenge") || act.includes("deny")) {
+      if (act.includes("block") || act.includes("drop") || act.includes("challenge") || act.includes("deny") || act.includes("mitigat")) {
         blockedCount++;
       }
 
@@ -851,11 +822,6 @@ Recommendations:
       if (colIdx.url >= 0 && cols[colIdx.url]) {
         const u = cols[colIdx.url];
         endpointCounts[u] = (endpointCounts[u] || 0) + 1;
-      }
-
-      if (colIdx.country >= 0 && cols[colIdx.country]) {
-        const c = cols[colIdx.country];
-        countryCounts[c] = (countryCounts[c] || 0) + 1;
       }
     }
 
@@ -868,41 +834,34 @@ Recommendations:
       .sort((a, b) => b.attackCount - a.attackCount)
       .slice(0, 5);
 
-    const sources = Object.entries(countryCounts)
-      .map(([country, count]) => ({ country, count, pct: ((count / totalCount) * 100).toFixed(1) + "%" }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-
-    const topThreat = categories.length > 0 ? categories[0].name : "Suspicious Activity";
+    const topThreat = categories.length > 0 ? categories[0].name : "Perimeter Attacks";
     const blockedRate = totalCount ? ((blockedCount / totalCount) * 100).toFixed(1) + "%" : "100%";
     const botPct = totalCount ? ((botCount / totalCount) * 100).toFixed(1) + "%" : "0%";
 
     return {
-      type: "csv_events",
       totalEvents: totalCount,
       blockedRate,
       topThreat,
       botPct,
       categories,
-      endpoints,
-      sources
+      endpoints
     };
   }
 
   function summarizeEventList(records) {
-    let totalCount = records.length;
+    const totalCount = records.length;
     let blockedCount = 0;
     let botCount = 0;
     const catMap = {};
     const urlMap = {};
 
     records.forEach(r => {
-      const cat = r.attackCategory || r.category || r.rule || r.threat || "Security Alert";
+      const cat = r.attackCategory || r.category || r.rule || r.threat || r.title || r.name || "Security Alert";
       catMap[cat] = (catMap[cat] || 0) + 1;
-      const act = String(r.action || r.result || "").toLowerCase();
-      if (act.includes("block") || act.includes("drop") || act.includes("deny")) blockedCount++;
+      const act = String(r.action || r.result || r.status || "").toLowerCase();
+      if (act.includes("block") || act.includes("drop") || act.includes("deny") || act.includes("mitigat")) blockedCount++;
       if (String(cat).toLowerCase().includes("bot")) botCount++;
-      const u = r.url || r.path || r.endpoint;
+      const u = r.url || r.path || r.endpoint || r.resource || r.asset;
       if (u) urlMap[u] = (urlMap[u] || 0) + 1;
     });
 
@@ -915,22 +874,20 @@ Recommendations:
     })).sort((a,b) => b.attackCount - a.attackCount).slice(0, 5);
 
     return {
-      type: "json_events",
       totalEvents: totalCount,
       blockedRate: totalCount ? ((blockedCount / totalCount) * 100).toFixed(1) + "%" : "100%",
       topThreat: categories[0] ? categories[0].name : "Threat Activity",
       botPct: totalCount ? ((botCount / totalCount) * 100).toFixed(1) + "%" : "0%",
       categories,
-      endpoints,
-      sources: []
+      endpoints
     };
   }
 
-  function interpretText(rawText) {
-    const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  function interpretText(lines) {
     const findings = [];
     const recommendations = [];
     let curSection = "findings";
+    const catMap = {};
 
     lines.forEach(line => {
       const lower = line.toLowerCase();
@@ -938,31 +895,32 @@ Recommendations:
         curSection = "recs";
         return;
       }
-      if (line.match(/^[-*•\d.]+/)) {
-        const clean = line.replace(/^[-*•\d.]+\s*/, "");
+      // Check for bullet or numbered lines or general text lines
+      const clean = line.replace(/^[-*•\d.:)]+\s*/, "").trim();
+      if (clean.length > 5) {
         if (curSection === "recs") {
           recommendations.push(clean);
         } else {
           findings.push(clean);
+          const shortName = clean.length > 50 ? clean.slice(0, 47) + "..." : clean;
+          catMap[shortName] = (catMap[shortName] || 0) + 1;
         }
       }
     });
 
-    const categories = findings.map(f => ({
-      name: f.slice(0, 45) + (f.length > 45 ? "..." : ""),
-      count: 1,
-      pct: "—"
-    }));
+    const categories = Object.entries(catMap).map(([name, count]) => ({
+      name, count, pct: "—"
+    })).slice(0, 6);
+
+    const topThreat = findings[0] ? (findings[0].length > 40 ? findings[0].slice(0, 38) + "..." : findings[0]) : "Identified Security Items";
 
     return {
-      type: "text_findings",
       totalEvents: findings.length || lines.length,
-      blockedRate: "N/A",
-      topThreat: findings[0] || "Identified Findings",
-      botPct: "N/A",
-      categories: categories.slice(0, 6),
+      blockedRate: "Defended",
+      topThreat: topThreat,
+      botPct: "Analyzed",
+      categories: categories,
       endpoints: [],
-      sources: [],
       textFindings: findings,
       textRecs: recommendations
     };
@@ -972,21 +930,45 @@ Recommendations:
   // Email Generation Engine
   // -------------------------------------------------------------
   function generateEmail(data, templateKey) {
-    const customer = custNameInput.value.trim() || "Team";
-    const period = repPeriodInput.value.trim() || "the recent reporting period";
+    const customer = custNameInput.value.trim() || "Acme Corp";
+    const period = repPeriodInput.value.trim() || "August 2026";
 
-    const totalEvents = data ? (typeof data.totalEvents === "number" ? data.totalEvents.toLocaleString() : data.totalEvents) : "64,200";
-    const blockedRate = data ? data.blockedRate : "98.2%";
-    const topThreat = data ? data.topThreat : "SQL Injection and Credential Stuffing";
-    const botPct = data ? data.botPct : "19.3%";
+    // Extract dynamic metrics or reasonable context
+    let totalEvents = "—";
+    let blockedRate = "Defended";
+    let topThreat = "Perimeter Threats & Exploitation Probes";
+    let botPct = "Monitored";
 
-    const catBullets = (data && data.categories && data.categories.length > 0)
-      ? data.categories.slice(0, 4).map(c => `  • ${c.name}: ${typeof c.count === "number" ? c.count.toLocaleString() : c.count} events (${c.pct})`).join("\n")
-      : `  • SQL Injection: 24,500 blocked attempts (38.2%)\n  • Credential Stuffing / ATO: 18,200 attempts (28.3%)\n  • Automated Bad Bot Scraping: 12,400 attempts (19.3%)\n  • Cross-Site Scripting (XSS): 5,300 attempts (8.3%)`;
+    let catBullets = "";
+    let endpointBullets = "";
+    let customRecs = "";
 
-    const endpointBullets = (data && data.endpoints && data.endpoints.length > 0)
-      ? data.endpoints.slice(0, 3).map(e => `  • ${e.url} — ${typeof e.attackCount === "number" ? e.attackCount.toLocaleString() : e.attackCount} attack requests`).join("\n")
-      : `  • /api/v1/auth/login — 18,200 attack requests (targeted by brute force)\n  • /products/detail.php — 15,400 attack requests (targeted by SQLi probes)\n  • /search — 9,200 attack requests (XSS / SQLi)`;
+    if (data) {
+      totalEvents = typeof data.totalEvents === "number" ? data.totalEvents.toLocaleString() : (data.totalEvents || "—");
+      blockedRate = data.blockedRate || "Defended";
+      topThreat = data.topThreat || "Perimeter Threats";
+      botPct = data.botPct || "Monitored";
+
+      if (data.categories && data.categories.length > 0) {
+        catBullets = data.categories.slice(0, 5).map(c => 
+          `  • ${c.name}${c.count && c.count > 1 ? `: ${typeof c.count === "number" ? c.count.toLocaleString() : c.count} events` : ""}${c.pct && c.pct !== "—" ? ` (${c.pct})` : ""}`
+        ).join("\n");
+      }
+
+      if (data.endpoints && data.endpoints.length > 0) {
+        endpointBullets = "\nMost Targeted Endpoints:\n" + data.endpoints.slice(0, 4).map(e => 
+          `  • ${e.url} (${typeof e.attackCount === "number" ? e.attackCount.toLocaleString() : e.attackCount} attack requests)`
+        ).join("\n");
+      }
+
+      if (data.textRecs && data.textRecs.length > 0) {
+        customRecs = data.textRecs.map((r, i) => `[${i+1}] ${r}`).join("\n");
+      }
+    }
+
+    if (!catBullets) {
+      catBullets = `  • ${topThreat}`;
+    }
 
     let subject = "";
     let body = "";
@@ -1012,23 +994,21 @@ KEY ATTACK CATEGORIES & PATTERNS
 During ${period}, our perimeter inspection captured and mitigated the following threat breakdown:
 
 ${catBullets}
-
-Most Targeted Endpoints:
 ${endpointBullets}
 
 ==================================================
 OBSERVATIONS & ADVISORY NOTES
 ==================================================
-1. Threat Containment: The perimeter rules successfully mitigated ${blockedRate} of hostile probes with zero reported service disruption.
-2. Bot & Scraping Activity: We observed periodic spikes in automated scrapers probing catalog and authentication endpoints. Bot challenge rules successfully filtered out unverified agents.
-3. Edge Hardening: Attackers continue to probe legacy and dynamic parameters with SQLi signatures. All known variations were matched and dropped.
+1. Threat Containment: The perimeter rules successfully mitigated hostile probes with zero reported service disruption.
+2. Bot & Scraping Activity: We observed regular automated scrapers probing exposed endpoints. Bot challenge and rate limit rules continue to filter unverified automation.
+3. Edge Hardening: Attack signatures targeting application parameters were inspected and dropped before reaching origin instances.
 
 ==================================================
 RECOMMENDED ACTION ITEMS
 ==================================================
-[1] High Priority: Verify rate limiting thresholds on login and password reset routes to further suppress credential stuffing noise.
-[2] Medium Priority: Continue enforcing strict WAF schema validation on /api/ endpoints to reject malformed JSON payloads before reaching the application tier.
-[3] Routine: Review IP reputation blocklists and renew active geoblocking / bot defense exemptions.
+${customRecs || `[1] High Priority: Verify rate limiting thresholds on authentication and search routes to suppress automated probing.
+[2] Medium Priority: Continue enforcing strict WAF schema validation on /api/ endpoints to reject malformed payloads.
+[3] Routine: Review IP reputation blocklists and renew active security rule exemptions.`}
 
 Please let me know if you would like to schedule a brief call to review these metrics or adjust any WAF rule sensitivities.
 
@@ -1054,8 +1034,6 @@ INCIDENT OVERVIEW
 ATTACK BREAKDOWN
 ==================================================
 ${catBullets}
-
-Targeted Assets:
 ${endpointBullets}
 
 ==================================================
@@ -1068,9 +1046,9 @@ ACTIONS TAKEN
 ==================================================
 RECOMMENDED NEXT STEPS
 ==================================================
-1. Maintain tightened rate-limiting policies on targeted authentication routes for the next 48 hours.
+${customRecs || `1. Maintain tightened rate-limiting policies on targeted authentication routes for the next 48 hours.
 2. Validate that application logs on the backend show no unhandled 500 errors corresponding to these request bursts.
-3. We will continue monitoring the traffic profile and notify you immediately if abnormal patterns re-emerge.
+3. We will continue monitoring the traffic profile and notify you immediately if abnormal patterns re-emerge.`}
 
 Please reach out if you have any questions or require additional logs.
 
@@ -1085,12 +1063,12 @@ Security Advisory Team
 Here is your executive security brief for ${period}:
 
 SUMMARY:
-Your web application firewall (WAF) inspected and protected customer-facing applications throughout ${period}. Over ${totalEvents} malicious attack events were analyzed, with a ${blockedRate} mitigation rate at the edge.
+Your web application firewall (WAF) inspected and protected customer-facing applications throughout ${period}. Over ${totalEvents} security events were analyzed, with a ${blockedRate} mitigation rate at the edge.
 
 KEY HIGHLIGHTS:
-• Perimeter Defense: WAF protections operated effectively, filtering ${blockedRate} of malicious traffic before reaching origin servers.
+• Perimeter Defense: WAF protections operated effectively, filtering hostile traffic before reaching origin servers.
 • Main Attack Focus: ${topThreat} represented the highest concentration of hostile traffic.
-• Availability: 100% uptime maintained across protected applications throughout all observed attack volumes.
+• Availability: 100% uptime maintained across protected applications throughout all observed traffic volumes.
 
 NEXT STEPS:
 We are continuing regular rule tuning and bot mitigation to keep defenses optimized ahead of upcoming traffic cycles.
@@ -1104,21 +1082,21 @@ Security Advisory Team
       subject = `WAF Rule Tuning & Action Items — ${customer}`;
       body = `Hi ${customer} Team,
 
-Based on our analysis of the ${period} WAF attack logs (${totalEvents} events, ${blockedRate} blocked), we have identified the following optimization opportunities for your security configuration:
+Based on our analysis of the ${period} WAF security logs (${totalEvents} events analyzed), we have identified the following optimization opportunities for your security configuration:
 
 ACTION ITEMS FOR REVIEW:
 
-1. Authentication Endpoint Protection (/api/v1/auth/login)
-   • Status: ${topThreat} observed.
-   • Action: Tighten rate limit threshold to 10 req/min per IP and enforce CAPTCHA on anomalous user-agents.
+${customRecs || `1. Authentication & Sensitive Endpoint Protection
+   • Observation: Probing activity observed under ${topThreat}.
+   • Action: Tighten rate limit thresholds and enforce CAPTCHA / bot challenge on anomalous user-agents.
 
 2. API Schema Validation
-   • Status: Malformed JSON and parameter probes detected.
-   • Action: Enable strict OpenAPI specification validation on the WAF to block unauthorized parameter injection.
+   • Observation: Malformed payloads and parameter probes detected.
+   • Action: Enable strict OpenAPI / JSON schema validation on the WAF to block unauthorized parameter injection.
 
 3. Bot Defense Calibration
-   • Status: Bot traffic accounted for ${botPct} of requests.
-   • Action: Switch passive bot monitoring to active JavaScript challenge on non-browser endpoints.
+   • Observation: Automated scrapers and bot traffic detected.
+   • Action: Switch passive bot monitoring to active challenge mode on non-browser API endpoints.`}
 
 Let us know when you would like to proceed with applying these updates in staging.
 
@@ -1132,34 +1110,28 @@ Security Advisory Team
   }
 
   // -------------------------------------------------------------
-  // UI Rendering & State Management
+  // Live UI Update Function
   // -------------------------------------------------------------
   function updateUI() {
-    if (!parsedReportData) {
-      // Auto-parse whatever is in pasteInput
-      const currentText = pasteInput.value.trim();
-      if (currentText) {
-        parsedReportData = parseData(currentText);
-      }
-    }
+    const rawText = pasteInput.value.trim();
+    const parsed = parseData(rawText);
 
-    if (parsedReportData) {
+    if (parsed && (parsed.totalEvents > 0 || (parsed.categories && parsed.categories.length > 0))) {
       analyticsCard.style.display = "block";
-      $("metric-total-events").textContent = typeof parsedReportData.totalEvents === "number"
-        ? parsedReportData.totalEvents.toLocaleString()
-        : parsedReportData.totalEvents;
-      $("metric-blocked").textContent = parsedReportData.blockedRate;
-      $("metric-top-threat").textContent = parsedReportData.topThreat.length > 20
-        ? parsedReportData.topThreat.slice(0, 18) + "..."
-        : parsedReportData.topThreat;
-      $("metric-bot-pct").textContent = parsedReportData.botPct;
+      $("metric-total-events").textContent = typeof parsed.totalEvents === "number"
+        ? parsed.totalEvents.toLocaleString()
+        : parsed.totalEvents;
+      $("metric-blocked").textContent = parsed.blockedRate;
+      $("metric-top-threat").textContent = parsed.topThreat.length > 22
+        ? parsed.topThreat.slice(0, 20) + "..."
+        : parsed.topThreat;
+      $("metric-bot-pct").textContent = parsed.botPct;
 
       // Render Categories Table
-      let tableHtml = "";
-      if (parsedReportData.categories && parsedReportData.categories.length > 0) {
-        tableHtml = `
-          <div style="margin-top:14px;">
-            <label style="font-size:11.5px; text-transform:uppercase;">Attack Breakdown</label>
+      if (parsed.categories && parsed.categories.length > 0) {
+        breakdownContent.innerHTML = `
+          <div style="margin-top:12px;">
+            <label style="font-size:11px; text-transform:uppercase;">Extracted Threat Categories</label>
             <div class="table-wrap">
               <table>
                 <thead>
@@ -1170,7 +1142,7 @@ Security Advisory Team
                   </tr>
                 </thead>
                 <tbody>
-                  ${parsedReportData.categories.map(c => `
+                  ${parsed.categories.map(c => `
                     <tr>
                       <td style="font-weight:600;">${escapeHtml(c.name)}</td>
                       <td>${typeof c.count === "number" ? c.count.toLocaleString() : c.count}</td>
@@ -1182,14 +1154,15 @@ Security Advisory Team
             </div>
           </div>
         `;
+      } else {
+        breakdownContent.innerHTML = "";
       }
-      breakdownContent.innerHTML = tableHtml;
     } else {
       analyticsCard.style.display = "none";
     }
 
-    // Refresh email text
-    const email = generateEmail(parsedReportData, activeTemplate);
+    // Refresh email text live
+    const email = generateEmail(parsed, activeTemplate);
     emailSubject.value = email.subject;
     emailBody.value = email.body;
     updateWordCount();
@@ -1265,11 +1238,11 @@ Security Advisory Team
   // -------------------------------------------------------------
   // Event Listeners
   // -------------------------------------------------------------
-  $("analyze-btn").addEventListener("click", () => {
-    parsedReportData = parseData(pasteInput.value);
-    updateUI();
-    showToast("Report analyzed & email updated!");
-  });
+  // Live input changes
+  custNameInput.addEventListener("input", updateUI);
+  repPeriodInput.addEventListener("input", updateUI);
+  pasteInput.addEventListener("input", updateUI);
+  emailBody.addEventListener("input", updateWordCount);
 
   // Template tabs
   document.querySelectorAll(".tab-btn").forEach(btn => {
@@ -1277,11 +1250,7 @@ Security Advisory Team
       document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       activeTemplate = btn.getAttribute("data-template");
-      const email = generateEmail(parsedReportData, activeTemplate);
-      emailSubject.value = email.subject;
-      emailBody.value = email.body;
-      updateWordCount();
-      saveState();
+      updateUI();
     });
   });
 
@@ -1297,7 +1266,8 @@ Security Advisory Team
   $("copy-recs-btn").addEventListener("click", () => {
     const full = emailBody.value;
     const match = full.match(/RECOMMENDED ACTION ITEMS[\s\S]*?(?=Please let me know|Best regards|$)/i) ||
-                  full.match(/RECOMMENDED NEXT STEPS[\s\S]*?(?=Please reach out|Best regards|$)/i);
+                  full.match(/RECOMMENDED NEXT STEPS[\s\S]*?(?=Please reach out|Best regards|$)/i) ||
+                  full.match(/ACTION ITEMS FOR REVIEW[\s\S]*?(?=Let us know|Best regards|$)/i);
     if (match) {
       copyToClipboard(match[0].trim(), "Action items copied!");
     } else {
@@ -1310,7 +1280,10 @@ Security Advisory Team
     pasteInput.value = SAMPLE_WAF_CSV;
     custNameInput.value = "Acme Corp";
     repPeriodInput.value = "August 2026";
-    parsedReportData = parseData(SAMPLE_WAF_CSV);
+    activeTemplate = "monthly";
+    document.querySelectorAll(".tab-btn").forEach(b => {
+      b.classList.toggle("active", b.getAttribute("data-template") === "monthly");
+    });
     updateUI();
     showToast("Loaded Monthly WAF Analytics sample");
   });
@@ -1319,7 +1292,6 @@ Security Advisory Team
     pasteInput.value = SAMPLE_WAF_JSON;
     custNameInput.value = "Acme Corp";
     repPeriodInput.value = "August 2026 Spike";
-    parsedReportData = parseData(SAMPLE_WAF_JSON);
     activeTemplate = "incident";
     document.querySelectorAll(".tab-btn").forEach(b => {
       b.classList.toggle("active", b.getAttribute("data-template") === "incident");
@@ -1332,7 +1304,10 @@ Security Advisory Team
     pasteInput.value = SAMPLE_VULN_TXT;
     custNameInput.value = "Acme Corp";
     repPeriodInput.value = "August 2026";
-    parsedReportData = parseData(SAMPLE_VULN_TXT);
+    activeTemplate = "monthly";
+    document.querySelectorAll(".tab-btn").forEach(b => {
+      b.classList.toggle("active", b.getAttribute("data-template") === "monthly");
+    });
     updateUI();
     showToast("Loaded Cloud Vulnerability Scan sample");
   });
@@ -1368,17 +1343,11 @@ Security Advisory Team
     reader.onload = (e) => {
       const content = e.target.result;
       pasteInput.value = content;
-      parsedReportData = parseData(content);
       updateUI();
       showToast(`Loaded "${file.name}"`);
     };
     reader.readAsText(file);
   }
-
-  // Inputs live reaction
-  custNameInput.addEventListener("input", updateUI);
-  repPeriodInput.addEventListener("input", updateUI);
-  emailBody.addEventListener("input", updateWordCount);
 
   // Theme toggle
   $("theme-btn").addEventListener("click", () => {
@@ -1392,7 +1361,6 @@ Security Advisory Team
   $("clear-btn").addEventListener("click", () => {
     if (confirm("Reset inputs and start fresh?")) {
       pasteInput.value = "";
-      parsedReportData = null;
       localStorage.removeItem(STORAGE_KEY);
       updateUI();
       showToast("Cleared.");
