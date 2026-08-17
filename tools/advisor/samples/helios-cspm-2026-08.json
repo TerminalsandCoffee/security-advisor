@@ -1,0 +1,71 @@
+{
+  "report": "Cloud Security Posture Assessment",
+  "generated": "2026-08-15",
+  "account": "helios-prod",
+  "findings": [
+    {
+      "name": "Unencrypted RDS database storing PHI",
+      "severity": "critical",
+      "status": "open",
+      "category": "Data Protection",
+      "resource": "rds/patients-db",
+      "description": "At-rest encryption is disabled on the primary patient database, which stores protected health information."
+    },
+    {
+      "name": "Root account has active access keys",
+      "severity": "critical",
+      "status": "open",
+      "category": "Identity",
+      "resource": "iam/root",
+      "description": "The account root user has two active long-lived access keys, contrary to best practice."
+    },
+    {
+      "name": "IAM service account with AdministratorAccess and no MFA",
+      "severity": "high",
+      "status": "open",
+      "category": "Identity",
+      "resource": "iam/svc-deploy",
+      "description": "Deployment service account holds full administrator privileges and does not enforce MFA."
+    },
+    {
+      "name": "Security group exposes RDP to the internet",
+      "severity": "high",
+      "status": "open",
+      "category": "Network",
+      "resource": "sg-0a12 (3389)",
+      "description": "Inbound RDP (3389) is open to 0.0.0.0/0."
+    },
+    {
+      "name": "CloudTrail audit logging disabled in primary region",
+      "severity": "high",
+      "status": "open",
+      "category": "Logging",
+      "resource": "cloudtrail/us-east-1",
+      "description": "No management-event audit trail is being recorded in us-east-1."
+    },
+    {
+      "name": "EBS snapshot shared publicly",
+      "severity": "high",
+      "status": "open",
+      "category": "Data Protection",
+      "resource": "ebs/snap-9f3c",
+      "description": "A volume snapshot is shared with all AWS accounts."
+    },
+    {
+      "name": "Backup bucket without versioning",
+      "severity": "medium",
+      "status": "open",
+      "category": "Data Protection",
+      "resource": "s3/helios-backups",
+      "description": "Object versioning is disabled, weakening ransomware recovery."
+    },
+    {
+      "name": "Kubernetes control plane past end-of-life",
+      "severity": "medium",
+      "status": "open",
+      "category": "Patch Management",
+      "resource": "eks/prod",
+      "description": "Cluster runs Kubernetes 1.24, which is end-of-life."
+    }
+  ]
+}

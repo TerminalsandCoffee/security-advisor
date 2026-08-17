@@ -1,0 +1,7 @@
+Title,Severity,Status,CVE,Asset,Category,Description
+Outdated OpenSSL on web tier,Critical,Open,CVE-2022-3602,web-prod-01,Patch Management,Vulnerable OpenSSL 3.0.0 allows a stack buffer overflow during certificate verification
+SMBv1 protocol enabled,High,Open,,file-prod-02,Configuration,Legacy SMBv1 is enabled and exposed on the internal file server
+Weak TLS ciphers supported,Medium,Open,,web-prod-01,Encryption,Server negotiates TLS 1.0 and RC4 cipher suites
+Missing security headers,Low,Open,,web-prod-01,Web Hardening,Responses lack HSTS and Content-Security-Policy headers
+Verbose error messages,Low,Open,,api-prod-03,Web Hardening,Unhandled exceptions return full stack traces to clients
+Default database admin account present,High,Open,,db-prod-05,Access Control,The default sa administrator account is enabled with a weak password

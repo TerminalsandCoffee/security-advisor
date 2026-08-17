@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WAF Raw Visit Investigation Assistant</title>
+<style>
+  :root {
+    --bg:#0b1020; --panel:#121a2c; --panel2:#172238; --text:#eaf0ff;
+    --muted:#9fb0cc; --line:#263652; --accent:#7aa2ff; --good:#69d59a;
+    --warn:#f4c76b; --bad:#ff7f8f; --chip:#1d2b47;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; font-family:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
+    background:linear-gradient(180deg,#080d19 0%,var(--bg) 100%); color:var(--text);
+  }
+  .wrap { max-width:1180px; margin:0 auto; padding:28px 18px 56px; }
+  h1 { margin:0 0 6px; font-size:28px; }
+  .sub { color:var(--muted); margin-bottom:20px; }
+  .panel {
+    background:rgba(18,26,44,.94); border:1px solid var(--line); border-radius:16px;
+    padding:18px; box-shadow:0 12px 36px rgba(0,0,0,.18); margin-bottom:16px;
+  }
+  .panel h2 { font-size:16px; margin:0 0 12px; }
+  .drop {
+    border:1.5px dashed #40557c; border-radius:12px; padding:24px; text-align:center;
+    color:var(--muted); cursor:pointer; transition:.15s; background:#0e1627;
+  }
+  .drop.drag { border-color:var(--accent); background:#111d34; }
+  textarea {
+    width:100%; min-height:160px; resize:vertical; background:#0d1423; color:#dfe8fb;
+    border:1px solid var(--line); border-radius:12px; padding:12px; margin-top:12px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px;
+  }
+  button {
+    border:0; border-radius:10px; padding:11px 16px; font-weight:700; cursor:pointer;
+    background:var(--accent); color:#071022;
+  }
+  button.secondary { background:#21314f; color:var(--text); }
+  .row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:12px; }
+  .status { margin-top:10px; color:var(--muted); font-size:13px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin:4px 0 16px; }
+  .card { background:var(--panel2); border:1px solid var(--line); padding:14px; border-radius:12px; }
+  .num { font-size:23px; font-weight:800; }
+  .label { font-size:12px; color:var(--muted); margin-top:2px; }
+  .summary, .dash-empty { padding:14px; background:#0f1829; border:1px solid var(--line); border-radius:12px; line-height:1.6; }
+  .summary p { margin:0 0 8px; }
+  .summary p:last-child { margin-bottom:0; }
+  .dash-empty { color:var(--muted); font-size:13px; }
+  .chip { display:inline-block; padding:5px 10px; margin:3px 4px 3px 0; background:var(--chip); border-radius:999px; font-size:12px; }
+  .chip-muted { background:#1b2540; color:var(--muted); }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th,td { text-align:left; padding:9px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); position:sticky; top:0; background:var(--panel); }
+  .tablewrap { max-height:450px; overflow:auto; border:1px solid var(--line); border-radius:12px; }
+  details { margin-top:12px; }
+  summary { cursor:pointer; color:#c9d6ef; }
+  pre { white-space:pre-wrap; word-break:break-word; background:#0b1322; padding:12px; border-radius:10px; border:1px solid var(--line); }
+  .good{color:var(--good)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+  .note { color:var(--muted); font-size:12px; line-height:1.5; margin-top:12px; }
+  .hidden { display:none; }
+
+  .badge { display:inline-block; padding:2px 7px; border-radius:6px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; margin-left:6px; vertical-align:middle; }
+  .badge-observed { background:#123a2c; color:var(--good); }
+  .badge-heuristic { background:#3a300f; color:var(--warn); }
+  .badge-unverified { background:#3a1620; color:var(--bad); }
+  .badge-unknown { background:#22304a; color:var(--muted); }
+
+  .finding { padding:12px 14px; background:#0f1829; border:1px solid var(--line); border-radius:12px; margin-bottom:10px; }
+  .finding h3 { margin:0 0 6px; font-size:14px; }
+  .evidence-list { margin:6px 0 0; padding-left:18px; color:var(--muted); font-size:12.5px; line-height:1.6; }
+
+  .event-card { background:#0f1829; border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:12px; }
+  .event-card h3 { margin:0 0 8px; font-size:14px; }
+  .kv { display:grid; grid-template-columns:170px 1fr; gap:4px 10px; font-size:12.5px; margin-top:6px; }
+  .kv .k { color:var(--muted); }
+  .kv .v { word-break:break-word; }
+  .decode-pair { background:#0b1322; border:1px solid var(--line); border-radius:8px; padding:8px 10px; margin-top:8px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11.5px; word-break:break-word; }
+  .decode-pair .lbl { color:var(--muted); font-family:Inter,ui-sans-serif,sans-serif; text-transform:uppercase; font-size:10px; letter-spacing:.4px; display:block; margin-bottom:2px; }
+  .decode-pair .lbl:not(:first-child) { margin-top:6px; }
+
+  .guidance-banner { padding:14px 16px; border-radius:12px; font-weight:700; margin-bottom:10px; }
+  .guidance-possible { background:#123a2c; color:var(--good); border:1px solid #1c5c46; }
+  .guidance-less-likely { background:#3a1620; color:var(--bad); border:1px solid #5c2430; }
+  .guidance-unclear, .guidance-insufficient { background:#22304a; color:var(--muted); border:1px solid var(--line); }
+
+  .narrative-list { margin:8px 0 0; padding-left:20px; line-height:1.7; font-size:13px; }
+  @media(max-width:850px){ .kv{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>WAF Raw Visit Investigation Assistant</h1>
+  <div class="sub">Turns raw WAF visit/session/action export data into a structured investigation — not just prettier JSON. Drop one or more export files, or paste raw data, then click <b>Investigate</b>. Everything runs locally in your browser; nothing is uploaded anywhere.</div>
+
+  <section class="panel">
+    <h2>1. Load raw data</h2>
+    <div id="drop" class="drop">
+      <b>Drop one or more export files here</b><br/>
+      <span>or click to select files</span>
+      <input id="file" type="file" multiple hidden />
+    </div>
+    <textarea id="input" placeholder='Paste JSON, a JSON array, or newline-delimited JSON here...'></textarea>
+    <div class="row">
+      <button id="analyze">Investigate</button>
+      <button id="clear" class="secondary">Clear</button>
+      <span id="exportType" class="chip chip-muted">No data loaded</span>
+    </div>
+    <div id="status" class="status">Everything runs locally in your browser.</div>
+  </section>
+
+  <div id="resultsWrap" class="hidden">
+
+    <section class="panel">
+      <h2>What Happened?</h2>
+      <div id="whatHappened" class="summary"></div>
+      <div class="note">
+        This describes what the export contains and how the WAF processed it. It does not make a final malicious/benign
+        determination by itself. Always correlate with the WAF console, policy configuration, timestamps, and application context.
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Primary Findings</h2>
+      <div id="dashCards" class="cards"></div>
+      <div id="findings"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Visitor Assessment</h2>
+      <div id="visitorAssessment"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Security / Attack Analysis</h2>
+      <div id="securityEvents"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Investigation Guidance</h2>
+      <div id="guidance"></div>
+      <div class="note">Investigative guidance only, based on the heuristics above — not a verdict. "Potential False Positive" reflects how consistent the evidence looks with human, non-malicious behavior; it is never a claim that an attack did or didn't happen.</div>
+    </section>
+
+    <section class="panel">
+      <h2>Timeline</h2>
+      <h3 style="font-size:13px;margin:0 0 8px;color:var(--muted)">Correlated narrative</h3>
+      <div id="correlatedNarrative"></div>
+      <h3 style="font-size:13px;margin:16px 0 8px;color:var(--muted)">Full normalized timeline</h3>
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Time</th><th>Client IP</th><th>Method</th><th>URL / Path</th>
+              <th>Result / Action</th><th>Category</th><th>Alert / Rule</th><th>Visitor / Session</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <details>
+        <summary>Field glossary detected in this export</summary>
+        <div id="glossary"></div>
+      </details>
+      <details>
+        <summary>Raw parsed JSON</summary>
+        <pre id="parsed"></pre>
+      </details>
+    </section>
+
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let loadedFiles = [];
+
+// ---------------------------------------------------------------------------
+// Field glossary
+// ---------------------------------------------------------------------------
+const fieldMeaning = {
+  siteid: "Site identifier.",
+  clientip: "Client/source IP seen for the request or session.",
+  clientipex: "Client/source IP field present in this export.",
+  method: "HTTP request method such as GET or POST.",
+  url: "Requested URL or resource.",
+  referer: "HTTP Referer value, when supplied.",
+  useragent: "Client User-Agent string.",
+  visitorclappid: "Visitor classification identifier.",
+  visitorclapptype: "Observed visitor client/application classification type.",
+  visitorishuman: "Observed human/automation classification for the visitor.",
+  visitorid: "Visitor identifier associated with the activity.",
+  sessionid: "Session identifier associated with the activity.",
+  isbadbot: "Observed bad-bot classification flag.",
+  issuspectedbadbot: "Observed suspected-bad-bot classification flag.",
+  requestresult: "WAF request handling/result value.",
+  reqresult: "WAF request handling/result value.",
+  alerttype: "Security alert type associated with the event.",
+  alertstage: "Stage in request processing where the alert was generated.",
+  alertactionscount: "Count of security actions associated with the alert.",
+  attacks: "Array of security/attack category data associated with the record.",
+  ruleid: "Identifier of the rule involved in the security action.",
+  ruleaction: "Action associated with the matching rule.",
+  matchedtext: "Text matched by the security rule/signature that triggered the event.",
+  paramname: "Name of the request parameter associated with the security event.",
+  paramvalue: "Value of the request parameter associated with the security event.",
+  querystring: "Raw query string associated with the request.",
+  postbody: "Raw POST body associated with the request.",
+  location: "Where in the request the matched content was found (e.g. query string, header, body).",
+  captchasupport: "Observed CAPTCHA support/state for the client.",
+  cookiesupport: "Observed cookie support/state for the client.",
+  jssupport: "Observed JavaScript support/state for the client.",
+  countrycode: "Country code derived for the client.",
+  city: "City derived for the client.",
+  starttime: "Session/event start timestamp.",
+  endtime: "Session/event end timestamp.",
+  updatetime: "Timestamp when the record was last updated.",
+  responsetime: "Observed response timing field, if supplied.",
+  statuscode: "HTTP response status code, if supplied."
+};
+
+// Locally supplied, unverified mapping of numeric attack/security category IDs.
+// This is NOT sourced from official WAF vendor documentation and must be confirmed
+// before being treated as authoritative. It is not the same thing as a rule ID.
+const WAF_CATEGORY_MAP = {
+  0: "SQL Injection",
+  1: "Cross Site Scripting",
+  3: "Illegal Resource Access",
+  4: "Bad Bot",
+  7: "Security Playground",
+  8: "DDoS",
+  9: "Backdoor Protection",
+  10: "Remote File Inclusion",
+  11: "Rules",
+  12: "API Specification Violation",
+  13: "Account Takeover",
+  14: "Advanced Bot Protection",
+  17: "Invalid POST Resubmission"
+};
+function mapCategory(id) {
+  if (id === undefined || id === null || id === "") return null;
+  const key = Number(id);
+  if (Number.isFinite(key) && Object.prototype.hasOwnProperty.call(WAF_CATEGORY_MAP, key)) {
+    return { id: key, label: WAF_CATEGORY_MAP[key], verified: false };
+  }
+  return { id, label: null, verified: false };
+}
+
+// ---------------------------------------------------------------------------
+// 1. Input handling / parsing (unchanged mechanics: file, drag-drop, paste, loose parsing)
+// ---------------------------------------------------------------------------
+function flattenObjects(value, out=[]) {
+  if (Array.isArray(value)) {
+    value.forEach(v => flattenObjects(v, out));
+  } else if (value && typeof value === "object") {
+    out.push(value);
+  }
+  return out;
+}
+function parseLoose(text) {
+  const t = text.trim();
+  if (!t) return [];
+  try { return flattenObjects(JSON.parse(t)); } catch(e) {}
+
+  // NDJSON / one JSON object or array per line
+  let items = [];
+  let ok = 0;
+  for (const line of t.split(/\r?\n/)) {
+    const s = line.trim().replace(/,$/,"");
+    if (!s) continue;
+    try {
+      const parsed = JSON.parse(s);
+      flattenObjects(parsed, items); ok++;
+    } catch(e) {}
+  }
+  if (ok && items.length) return items;
+
+  // Salvage concatenated top-level JSON objects by balanced brace scanning.
+  items = [];
+  let start=-1, depth=0, inStr=false, esc=false;
+  for (let i=0;i<t.length;i++) {
+    const ch=t[i];
+    if (inStr) {
+      if (esc) esc=false;
+      else if (ch==="\\") esc=true;
+      else if (ch==='"') inStr=false;
+      continue;
+    }
+    if (ch==='"') { inStr=true; continue; }
+    if (ch==="{") { if(depth===0) start=i; depth++; }
+    else if (ch==="}") {
+      depth--;
+      if (depth===0 && start>=0) {
+        try { items.push(JSON.parse(t.slice(start,i+1))); } catch(e) {}
+        start=-1;
+      }
+    }
+  }
+  if (items.length) return items;
+  throw new Error("Could not parse the input as JSON, JSON array, NDJSON, or concatenated JSON objects.");
+}
+
+async function readFileAsText(file) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (bytes.length >= 2 && bytes[0] === 0xFF && bytes[1] === 0xFE) {
+    return new TextDecoder("utf-16le").decode(bytes.subarray(2));
+  }
+  if (bytes.length >= 2 && bytes[0] === 0xFE && bytes[1] === 0xFF) {
+    return new TextDecoder("utf-16be").decode(bytes.subarray(2));
+  }
+  const text = new TextDecoder("utf-8").decode(bytes);
+  return text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;
+}
+
+// ---------------------------------------------------------------------------
+// Shared helpers
+// ---------------------------------------------------------------------------
+function canonicalKey(obj, candidates) {
+  const keys = Object.keys(obj || {});
+  const found = keys.find(k => candidates.includes(k.toLowerCase()));
+  return found ? obj[found] : undefined;
+}
+function deepFind(obj, candidates, depth=0) {
+  if (!obj || typeof obj !== "object" || depth > 4) return undefined;
+  const direct = canonicalKey(obj, candidates);
+  if (direct !== undefined && direct !== null && direct !== "") return direct;
+  for (const v of Object.values(obj)) {
+    if (v && typeof v === "object") {
+      const hit = deepFind(v, candidates, depth+1);
+      if (hit !== undefined && hit !== null && hit !== "") return hit;
+    }
+  }
+}
+function get(rec, names) { return deepFind(rec, names.map(x=>x.toLowerCase())); }
+function safe(v) {
+  if (v === undefined || v === null || v === "") return "—";
+  if (typeof v === "object") return JSON.stringify(v);
+  return String(v);
+}
+function timeFmt(v) {
+  if (v === undefined || v === null || v === "") return "—";
+  let n = Number(v);
+  if (Number.isFinite(n)) {
+    if (String(Math.trunc(n)).length === 10) n *= 1000;
+    if (String(Math.trunc(n)).length >= 13) {
+      const d = new Date(n);
+      if (!isNaN(d)) return d.toLocaleString();
+    }
+  }
+  const d = new Date(v);
+  return isNaN(d) ? safe(v) : d.toLocaleString();
+}
+function uniq(arr){ return [...new Set(arr.filter(v => v!==undefined && v!==null && v!=="").map(String))]; }
+function truthy(v) { return /^(true|1|yes)$/i.test(String(v == null ? "" : v).trim()); }
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+}
+// Attempts a safe, non-executing URL/form decode. Returns undefined if decoding
+// fails or doesn't change the value (so callers can skip showing a redundant pair).
+function safeDecode(v) {
+  if (v === undefined || v === null || v === "") return undefined;
+  const s = String(v);
+  try {
+    const d = decodeURIComponent(s.replace(/\+/g, " "));
+    return d !== s ? d : undefined;
+  } catch(e) { return undefined; }
+}
+
+// ---------------------------------------------------------------------------
+// 3. Export-type detection
+// ---------------------------------------------------------------------------
+const SESSION_SIGNAL_FIELDS = ["visitorishuman","visitorclapptype","visitorclappid","cookiesupport","jssupport","captchasupport"];
+const ACTION_SIGNAL_FIELDS = ["attacks","alerttype","ruleid","matchedtext","paramname","paramvalue","requestresult"];
+function classifyRecord(rec) {
+  const hasSession = get(rec, SESSION_SIGNAL_FIELDS) !== undefined;
+  const hasAction = get(rec, ACTION_SIGNAL_FIELDS) !== undefined;
+  if (hasSession && hasAction) return "mixed-record";
+  if (hasAction) return "action";
+  if (hasSession) return "session";
+  return "unknown";
+}
+function detectExportType(records) {
+  if (!records.length) return "Unknown/Unsupported";
+  const kinds = new Set(records.map(classifyRecord));
+  const hasSession = kinds.has("session") || kinds.has("mixed-record");
+  const hasAction = kinds.has("action") || kinds.has("mixed-record");
+  if (hasSession && hasAction) return "Mixed Session + Action Raw";
+  if (hasSession) return "Session Raw";
+  if (hasAction) return "Action Raw";
+  return "Unknown/Unsupported";
+}
+
+// ---------------------------------------------------------------------------
+// 4. Normalization
+// ---------------------------------------------------------------------------
+function extractCategories(rec) {
+  const attacksVal = get(rec, ["attacks"]);
+  const ids = [];
+  if (Array.isArray(attacksVal)) {
+    attacksVal.forEach(a => {
+      if (typeof a === "number" || (typeof a === "string" && a.trim() !== "" && !isNaN(Number(a)))) {
+        ids.push(Number(a));
+      } else if (a && typeof a === "object") {
+        const c = get(a, ["type","category","attacktype","attackcategory"]);
+        if (c !== undefined) ids.push(c);
+      }
+    });
+  }
+  const single = get(rec, ["attackcategory","category"]);
+  if (single !== undefined) ids.push(single);
+  return ids.map(mapCategory).filter(Boolean);
+}
+
+function normalizeRecord(rec, idx) {
+  const kind = classifyRecord(rec);
+  const alert = get(rec,["alerttype","alert_type","attacktype","violation","violations"]);
+  const alertStage = get(rec,["alertstage","alert_stage"]);
+  const action = get(rec,["requestresult","reqresult","ruleaction","action","result"]);
+  const rule = get(rec,["ruleid","rule_id","rulename","rule_name"]);
+  const visit = get(rec,["visitorclappid","visitorid","sessionid","session_id"]);
+
+  let categories = extractCategories(rec);
+  if (!categories.length && alert !== undefined && alert !== null && alert !== "" && !isNaN(Number(alert))) {
+    const c = mapCategory(alert);
+    if (c) categories = [c];
+  }
+
+  const paramName = get(rec, ["paramname","parameter_name"]);
+  const paramValueRaw = get(rec, ["paramvalue","parameter_value"]);
+  const matchedTextRaw = get(rec, ["matchedtext","matched_text"]);
+  const queryStringRaw = get(rec, ["querystring","query_string"]);
+  const postBodyRaw = get(rec, ["postbody","post_body"]);
+  const location = get(rec, ["location"]);
+
+  const security = kind === "action" || kind === "mixed-record" || !!(alert || rule || categories.length);
+  const sessionLike = (kind === "session" || kind === "mixed-record");
+
+  return {
+    idx: idx+1, kind,
+    time: get(rec,["starttime","timestamp","eventtime","time","updatetime","endtime"]),
+    ip: get(rec,["clientip","clientipex","src","sourceip","ip"]),
+    method: get(rec,["method","requestmethod","httpmethod"]),
+    url: get(rec,["url","requesturl","path","uri"]),
+    action, alert, alertStage, rule, visit,
+    status: get(rec,["statuscode","httpstatus","responsecode","status"]),
+    country: get(rec,["countrycode","country"]),
+    captcha: get(rec,["captchasupport","captchapending","captchabyvisitor"]),
+    cookie: get(rec,["cookiesupport"]),
+    js: get(rec,["jssupport"]),
+    userAgent: get(rec,["useragent","user_agent"]),
+    isHuman: get(rec,["visitorishuman","visitor_is_human"]),
+    clAppType: get(rec,["visitorclapptype","visitor_cl_app_type"]),
+    isBadBot: get(rec,["isbadbot","is_bad_bot"]),
+    isSuspectedBadBot: get(rec,["issuspectedbadbot","is_suspected_bad_bot"]),
+    categories,
+    paramName,
+    paramValueRaw, paramValueDecoded: safeDecode(paramValueRaw),
+    matchedTextRaw, matchedTextDecoded: safeDecode(matchedTextRaw),
+    queryStringRaw, queryStringDecoded: safeDecode(queryStringRaw),
+    postBodyRaw, postBodyDecoded: safeDecode(postBodyRaw),
+    location,
+    security,
+    sessionLike,
+    raw: rec
+  };
+}
+
+function categoryText(x) {
+  if (!x.categories || !x.categories.length) return "—";
+  return x.categories.map(c => c.label ? `${c.label} (unverified)` : `Category ${safe(c.id)} (unknown)`).join(", ");
+}
+
+// ---------------------------------------------------------------------------
+// 6/13. Session / visitor analysis
+// ---------------------------------------------------------------------------
+function analyzeVisitors(n) {
+  const sessionRecs = n.filter(x => x.sessionLike || x.isHuman !== undefined || x.clAppType !== undefined);
+  if (!sessionRecs.length) return null;
+
+  const humanFlags = uniq(sessionRecs.map(x=>x.isHuman));
+  const clAppTypes = uniq(sessionRecs.map(x=>x.clAppType));
+  const badBotRecs = sessionRecs.filter(x => truthy(x.isBadBot));
+  const suspectRecs = sessionRecs.filter(x => truthy(x.isSuspectedBadBot));
+  const cookieVals = uniq(sessionRecs.map(x=>x.cookie));
+  const jsVals = uniq(sessionRecs.map(x=>x.js));
+  const captchaVals = uniq(sessionRecs.map(x=>x.captcha));
+  const uas = uniq(sessionRecs.map(x=>x.userAgent));
+
+  let humanLikelihood, basis;
+  if (humanFlags.length) {
+    const allHuman = humanFlags.every(v => truthy(v) || /human/i.test(v));
+    const allBot = humanFlags.every(v => (!truthy(v) && !/human/i.test(v)));
+    humanLikelihood = allHuman ? "Likely human" : allBot ? "Likely automated" : "Mixed / inconclusive across records";
+    basis = "observed";
+  } else {
+    humanLikelihood = "Unclear — no direct human/automation classification field observed";
+    basis = "unknown";
+  }
+
+  const botIndicators = [];
+  if (badBotRecs.length) botIndicators.push(`Flagged as a bad bot on ${badBotRecs.length} record${badBotRecs.length===1?"":"s"} (observed).`);
+  if (suspectRecs.length) botIndicators.push(`Flagged as a suspected bad bot on ${suspectRecs.length} record${suspectRecs.length===1?"":"s"} (observed).`);
+  if (clAppTypes.length) botIndicators.push(`Visitor classification type value(s) observed: ${clAppTypes.join(", ")}.`);
+  if (!botIndicators.length) botIndicators.push("No explicit bad-bot classification field was observed in this export.");
+
+  return { humanLikelihood, basis, botIndicators, clAppTypes, cookieVals, jsVals, captchaVals, uas, recordCount: sessionRecs.length };
+}
+
+// ---------------------------------------------------------------------------
+// 5/14. Security / attack event analysis
+// ---------------------------------------------------------------------------
+function analyzeSecurityEvents(n) {
+  return n.filter(x => x.security);
+}
+
+// ---------------------------------------------------------------------------
+// 8. Investigation guidance engine (deterministic, non-authoritative)
+// ---------------------------------------------------------------------------
+function buildGuidance(n, visitorAssessment, securityEvents) {
+  if (!securityEvents.length) {
+    return {
+      level: "insufficient",
+      text: "No security/action events were detected in this export.",
+      evidence: ["There is nothing to evaluate for false-positive likelihood without at least one security/action event."]
+    };
+  }
+
+  const categoryLabels = uniq(securityEvents.flatMap(e => (e.categories||[]).map(c => c.label || `Category ${c.id}`)));
+  const blockedOrChallenged = securityEvents.filter(e => /block|challenge|captcha|deny|drop/i.test(String(e.action||"")));
+  const humanLikely = visitorAssessment && visitorAssessment.humanLikelihood === "Likely human";
+  const strongBot = !!(visitorAssessment && visitorAssessment.botIndicators.some(b => /Flagged as a bad bot/.test(b)));
+  const goodBrowserSupport = !!(visitorAssessment
+    && visitorAssessment.cookieVals.some(truthy)
+    && visitorAssessment.jsVals.some(truthy));
+
+  const evidence = [];
+  evidence.push(`${securityEvents.length} security event${securityEvents.length===1?"":"s"} observed across ${categoryLabels.length || "an unspecified number of"} distinct categor${categoryLabels.length===1?"y":"ies"}.`);
+  evidence.push(`${blockedOrChallenged.length} block/challenge/deny-style action${blockedOrChallenged.length===1?"":"s"} observed.`);
+  if (visitorAssessment) evidence.push(`Visitor human-likelihood: ${visitorAssessment.humanLikelihood} (${visitorAssessment.basis}).`);
+  if (goodBrowserSupport) evidence.push("Cookie and JavaScript support were both observed as supported.");
+
+  if (humanLikely && categoryLabels.length <= 1 && !strongBot && blockedOrChallenged.length <= 1) {
+    return { level: "possible", text: "Potential False Positive: Possible", evidence };
+  }
+  if (strongBot && categoryLabels.length > 1 && blockedOrChallenged.length > 1) {
+    return { level: "less-likely", text: "Potential False Positive: Less Likely", evidence };
+  }
+  return { level: "unclear", text: "Potential False Positive: Unclear — evidence does not clearly match either pattern above", evidence };
+}
+
+// ---------------------------------------------------------------------------
+// 9. Correlation engine
+// ---------------------------------------------------------------------------
+function correlate(n) {
+  const withVisit = n.filter(x => x.visit);
+  if (!withVisit.length) return [];
+  const groups = {};
+  withVisit.forEach(x => { (groups[x.visit] = groups[x.visit] || []).push(x); });
+  return Object.entries(groups)
+    .filter(([,items]) => items.length > 1)
+    .map(([visit, items]) => ({
+      visit,
+      items: items.slice().sort((a,b) => {
+        const ta = Date.parse(a.time); const tb = Date.parse(b.time);
+        if (isNaN(ta) || isNaN(tb)) return a.idx - b.idx;
+        return ta - tb;
+      })
+    }));
+}
+function describeStep(x) {
+  if (x.security) {
+    const cat = categoryText(x);
+    return `Request${x.url ? ` to ${escapeHtml(x.url)}` : ""} triggered ${cat !== "—" ? escapeHtml(cat) : "a security event"}${x.action ? `, resulting in ${escapeHtml(safe(x.action))}` : ""}.`;
+  }
+  if (x.sessionLike) {
+    return `Session/visitor activity observed${x.ip ? ` from ${escapeHtml(safe(x.ip))}` : ""}${x.country ? ` (${escapeHtml(safe(x.country))})` : ""}.`;
+  }
+  return `Request recorded${x.url ? ` to ${escapeHtml(x.url)}` : ""}.`;
+}
+
+// ---------------------------------------------------------------------------
+// 10. "What happened" narrative
+// ---------------------------------------------------------------------------
+function buildWhatHappened(n, exportType, visitorAssessment, securityEvents) {
+  const ips = uniq(n.map(x=>x.ip));
+  const urls = uniq(n.map(x=>x.url));
+  const parts = [];
+
+  parts.push(`${n.length} record${n.length===1?"":"s"} analyzed (detected as <b>${escapeHtml(exportType)}</b>).`);
+  if (ips.length) parts.push(`Activity originated from ${ips.length===1 ? `client IP <b>${escapeHtml(ips[0])}</b>` : `<b>${ips.length}</b> distinct client IPs`}.`);
+  if (urls.length) parts.push(urls.length===1 ? `The target resource was <b>${escapeHtml(urls[0])}</b>.` : `<b>${urls.length}</b> distinct resources were targeted.`);
+
+  if (securityEvents.length) {
+    const cats = uniq(securityEvents.flatMap(e => (e.categories||[]).map(c => c.label || `category ${c.id} (unverified)`)));
+    parts.push(`The WAF generated ${securityEvents.length} security-processing event${securityEvents.length===1?"":"s"}${cats.length ? `, including ${escapeHtml(cats.slice(0,4).join(", "))}` : ""}.`);
+  } else {
+    parts.push("No security/action events were detected — this export appears to be primarily session telemetry.");
+  }
+
+  if (visitorAssessment) parts.push(`Visitor assessment: <b>${escapeHtml(visitorAssessment.humanLikelihood)}</b>.`);
+  parts.push(`<span class="warn">What remains unknown:</span> anything not directly present in the fields below. Correlate with the WAF console, policy configuration, and application logs for full context.`);
+
+  return parts.map(p => `<p>${p}</p>`).join("");
+}
+
+// ---------------------------------------------------------------------------
+// 10. Rendering
+// ---------------------------------------------------------------------------
+function renderDashCards(n, securityEvents, visitorAssessment, exportType) {
+  const cards = [{ label: "Total Records", value: n.length }];
+
+  if (securityEvents.length || /Action|Mixed/.test(exportType)) {
+    cards.push({ label: "Security Events", value: securityEvents.length });
+    const blocked = securityEvents.filter(e => /block|challenge|captcha|deny|drop/i.test(String(e.action||"")));
+    cards.push({ label: "Blocked / Challenged", value: blocked.length });
+    const cats = uniq(securityEvents.flatMap(e => (e.categories||[]).map(c => c.label || `cat-${c.id}`)));
+    cards.push({ label: "Attack / Security Categories", value: cats.length });
+  }
+
+  const visitors = uniq(n.map(x=>x.visit));
+  if (visitors.length) cards.push({ label: "Unique Visitors / Sessions", value: visitors.length });
+
+  if (visitorAssessment) {
+    const humanish = n.filter(x => truthy(x.isHuman) || /human/i.test(String(x.isHuman||""))).length;
+    const botish = n.filter(x => truthy(x.isBadBot) || truthy(x.isSuspectedBadBot)).length;
+    if (humanish) cards.push({ label: "Human Indicators", value: humanish });
+    if (botish) cards.push({ label: "Bot Indicators", value: botish });
+  }
+
+  $("dashCards").innerHTML = cards.map(c =>
+    `<div class="card"><div class="num">${escapeHtml(String(c.value))}</div><div class="label">${escapeHtml(c.label)}</div></div>`
+  ).join("");
+}
+
+function renderFindings(n, securityEvents, visitorAssessment) {
+  const findings = [];
+  const ips = uniq(n.map(x=>x.ip));
+  const urls = uniq(n.map(x=>x.url));
+
+  if (ips.length) {
+    findings.push({
+      title: `Traffic observed from ${ips.length} client IP${ips.length===1?"":"s"}`,
+      evidence: ips.slice(0,8).map(ip => `Client IP: ${ip}`)
+    });
+  }
+  if (urls.length) {
+    findings.push({
+      title: `${urls.length} distinct URL/resource${urls.length===1?"":"s"} targeted`,
+      evidence: urls.slice(0,8).map(u => `URL: ${u}`)
+    });
+  }
+  if (securityEvents.length) {
+    const cats = uniq(securityEvents.flatMap(e => (e.categories||[]).map(c => c.label ? c.label : `Category ${c.id} (unverified)`)));
+    findings.push({
+      title: `${securityEvents.length} security event${securityEvents.length===1?"":"s"} recorded`,
+      evidence: cats.length ? cats.map(c => `Category observed: ${c}`) : ["No category could be mapped from the fields present; see raw fields on each event."]
+    });
+  } else {
+    findings.push({ title: "No security/action events detected", evidence: ["This export appears to contain session telemetry only."] });
+  }
+  if (visitorAssessment) {
+    findings.push({ title: `Visitor assessment: ${visitorAssessment.humanLikelihood}`, evidence: visitorAssessment.botIndicators });
+  }
+
+  $("findings").innerHTML = findings.map(f => `
+    <div class="finding">
+      <h3>${escapeHtml(f.title)}</h3>
+      <ul class="evidence-list">${f.evidence.map(e=>`<li>${escapeHtml(e)}</li>`).join("")}</ul>
+    </div>`).join("");
+}
+
+function renderVisitorAssessment(v) {
+  const el = $("visitorAssessment");
+  if (!v) {
+    el.innerHTML = `<div class="dash-empty">No visitor/session classification fields (e.g. human/automation flag, cookie/JS/CAPTCHA support) were detected in this export.</div>`;
+    return;
+  }
+  const basisBadge = v.basis === "observed"
+    ? `<span class="badge badge-observed">Observed</span>`
+    : `<span class="badge badge-unknown">Unknown</span>`;
+  el.innerHTML = `
+    <div class="finding">
+      <h3>${escapeHtml(v.humanLikelihood)} ${basisBadge}</h3>
+      <div class="kv">
+        <div class="k">Client classification</div><div class="v">${escapeHtml(v.clAppTypes.join(", ") || "—")}</div>
+        <div class="k">Cookie support</div><div class="v">${escapeHtml(v.cookieVals.join(", ") || "—")}</div>
+        <div class="k">JavaScript support</div><div class="v">${escapeHtml(v.jsVals.join(", ") || "—")}</div>
+        <div class="k">CAPTCHA behavior</div><div class="v">${escapeHtml(v.captchaVals.join(", ") || "—")}</div>
+        <div class="k">User-Agent(s)</div><div class="v">${escapeHtml(v.uas.slice(0,3).join(" | ") || "—")}</div>
+      </div>
+      <ul class="evidence-list">${v.botIndicators.map(b=>`<li>${escapeHtml(b)}</li>`).join("")}</ul>
+      <div class="note">Recommended investigation: confirm these classification fields against the WAF console for this visitor/session, and check whether the User-Agent and behavior are consistent with a real browser.</div>
+    </div>`;
+}
+
+function decodeRowHtml(label, rawVal, decodedVal) {
+  if (rawVal === undefined || rawVal === null || rawVal === "") return "";
+  return `<div class="decode-pair">
+    <span class="lbl">${escapeHtml(label)} — original</span>${escapeHtml(safe(rawVal))}
+    ${decodedVal ? `<span class="lbl">${escapeHtml(label)} — decoded</span>${escapeHtml(decodedVal)}` : ""}
+  </div>`;
+}
+
+function renderSecurityEvents(events) {
+  const el = $("securityEvents");
+  if (!events.length) {
+    el.innerHTML = `<div class="dash-empty">No security/action events were detected in this export.</div>`;
+    return;
+  }
+  el.innerHTML = events.map(e => {
+    const catHtml = (e.categories && e.categories.length)
+      ? e.categories.map(c => c.label
+          ? `${escapeHtml(c.label)} <span class="badge badge-unverified">Unverified mapping</span>`
+          : `Category ${escapeHtml(safe(c.id))} <span class="badge badge-unknown">Unknown</span>`
+        ).join(", ")
+      : (e.rule ? `Rule ${escapeHtml(safe(e.rule))}` : "Unspecified");
+
+    return `
+    <div class="event-card">
+      <h3>Security Event #${e.idx} — ${catHtml}</h3>
+      <div class="kv">
+        <div class="k">Triggered parameter</div><div class="v">${escapeHtml(safe(e.paramName))}</div>
+        <div class="k">Location</div><div class="v">${escapeHtml(safe(e.location))}</div>
+        <div class="k">Request result</div><div class="v">${escapeHtml(safe(e.action))}</div>
+        <div class="k">Rule / category ID</div><div class="v">${escapeHtml(safe(e.rule))}</div>
+        <div class="k">URL</div><div class="v">${escapeHtml(safe(e.url))}</div>
+        <div class="k">Client IP</div><div class="v">${escapeHtml(safe(e.ip))}</div>
+        <div class="k">Visitor / session</div><div class="v">${escapeHtml(safe(e.visit))}</div>
+        <div class="k">Time</div><div class="v">${escapeHtml(timeFmt(e.time))}</div>
+      </div>
+      ${decodeRowHtml("Parameter value", e.paramValueRaw, e.paramValueDecoded)}
+      ${decodeRowHtml("Matched text", e.matchedTextRaw, e.matchedTextDecoded)}
+      ${decodeRowHtml("Query string", e.queryStringRaw, e.queryStringDecoded)}
+      ${decodeRowHtml("POST body", e.postBodyRaw, e.postBodyDecoded)}
+      <details><summary>Supporting raw fields</summary><pre>${escapeHtml(JSON.stringify(e.raw, null, 2))}</pre></details>
+    </div>`;
+  }).join("");
+}
+
+function renderCorrelatedNarrative(groups) {
+  const el = $("correlatedNarrative");
+  if (!groups.length) {
+    el.innerHTML = `<div class="dash-empty">Not enough shared visitor/session identifiers were found across records to build a correlated narrative.</div>`;
+    return;
+  }
+  el.innerHTML = groups.slice(0,10).map(g => `
+    <div class="finding">
+      <h3>Visitor / session: ${escapeHtml(g.visit)}</h3>
+      <ol class="narrative-list">${g.items.map(x=>`<li>${describeStep(x)}</li>`).join("")}</ol>
+    </div>`).join("");
+}
+
+function renderGuidance(g) {
+  const cls = g.level === "possible" ? "guidance-possible"
+    : g.level === "less-likely" ? "guidance-less-likely"
+    : g.level === "insufficient" ? "guidance-insufficient"
+    : "guidance-unclear";
+  $("guidance").innerHTML = `
+    <div class="guidance-banner ${cls}">${escapeHtml(g.text)}</div>
+    <ul class="evidence-list">${g.evidence.map(e=>`<li>${escapeHtml(e)}</li>`).join("")}</ul>`;
+}
+
+function renderTimeline(n) {
+  $("rows").innerHTML = n.map(x => `
+    <tr>
+      <td>${x.idx}</td>
+      <td>${escapeHtml(timeFmt(x.time))}</td>
+      <td>${escapeHtml(safe(x.ip))}</td>
+      <td>${escapeHtml(safe(x.method))}</td>
+      <td>${escapeHtml(safe(x.url))}${x.status ? `<br><span class="label">HTTP ${escapeHtml(safe(x.status))}</span>`:""}</td>
+      <td>${escapeHtml(safe(x.action))}</td>
+      <td>${escapeHtml(categoryText(x))}</td>
+      <td>${escapeHtml(safe(x.alert))}${x.rule ? `<br><span class="label">Rule: ${escapeHtml(safe(x.rule))}</span>`:""}</td>
+      <td>${escapeHtml(safe(x.visit))}</td>
+    </tr>`).join("");
+}
+
+function renderGlossary(records) {
+  const keys = new Set();
+  records.forEach(r => Object.keys(r).forEach(k => keys.add(k)));
+  const glossaryRows = [...keys].sort().map(k => {
+    const meaning = fieldMeaning[k.toLowerCase()] || "Raw WAF export field. Kept visible for investigation; meaning may depend on export type/version.";
+    return `<tr><td><code>${escapeHtml(k)}</code></td><td>${escapeHtml(meaning)}</td></tr>`;
+  }).join("");
+  $("glossary").innerHTML = `<div class="tablewrap" style="max-height:300px"><table><thead><tr><th>Field</th><th>Interpretation</th></tr></thead><tbody>${glossaryRows}</tbody></table></div>`;
+}
+
+// ---------------------------------------------------------------------------
+// Orchestration
+// ---------------------------------------------------------------------------
+function interpret(records) {
+  const n = records.map(normalizeRecord);
+  const exportType = detectExportType(records);
+  const visitorAssessment = analyzeVisitors(n);
+  const securityEvents = analyzeSecurityEvents(n);
+  const correlated = correlate(n);
+  const guidance = buildGuidance(n, visitorAssessment, securityEvents);
+
+  $("exportType").textContent = `Detected: ${exportType}`;
+  $("resultsWrap").classList.remove("hidden");
+
+  $("whatHappened").innerHTML = buildWhatHappened(n, exportType, visitorAssessment, securityEvents);
+  renderDashCards(n, securityEvents, visitorAssessment, exportType);
+  renderFindings(n, securityEvents, visitorAssessment);
+  renderVisitorAssessment(visitorAssessment);
+  renderSecurityEvents(securityEvents);
+  renderCorrelatedNarrative(correlated);
+  renderGuidance(guidance);
+  renderTimeline(n);
+  renderGlossary(records);
+  $("parsed").textContent = JSON.stringify(records, null, 2);
+}
+
+async function process() {
+  try {
+    let all = [];
+    let sourceCount = 0;
+    for (const f of loadedFiles) {
+      const txt = await readFileAsText(f);
+      all.push(...parseLoose(txt)); sourceCount++;
+    }
+    if ($("input").value.trim()) {
+      all.push(...parseLoose($("input").value)); sourceCount++;
+    }
+    if (!all.length) throw new Error("Add a file or paste raw data first.");
+    interpret(all);
+    $("status").innerHTML = `<span class="good">Parsed ${all.length} record${all.length===1?"":"s"} from ${sourceCount} source${sourceCount===1?"":"s"}.</span>`;
+  } catch(e) {
+    $("status").innerHTML = `<span class="bad">${escapeHtml(e.message)}</span>`;
+  }
+}
+
+$("drop").onclick = () => $("file").click();
+$("file").onchange = e => {
+  loadedFiles = [...e.target.files];
+  $("status").textContent = `${loadedFiles.length} file(s) ready: ${loadedFiles.map(f=>f.name).join(", ")}`;
+};
+["dragenter","dragover"].forEach(ev => $("drop").addEventListener(ev, e => { e.preventDefault(); $("drop").classList.add("drag"); }));
+["dragleave","drop"].forEach(ev => $("drop").addEventListener(ev, e => { e.preventDefault(); $("drop").classList.remove("drag"); }));
+$("drop").addEventListener("drop", e => {
+  loadedFiles = [...e.dataTransfer.files];
+  $("status").textContent = `${loadedFiles.length} file(s) ready: ${loadedFiles.map(f=>f.name).join(", ")}`;
+});
+$("analyze").onclick = process;
+$("clear").onclick = () => {
+  loadedFiles=[]; $("file").value=""; $("input").value="";
+  $("status").textContent="Everything runs locally in your browser.";
+  $("exportType").textContent = "No data loaded";
+  $("resultsWrap").classList.add("hidden");
+};
+</script>
+</body>
+</html>

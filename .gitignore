@@ -1,0 +1,12 @@
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+*.swp
+.vscode/
+.idea/
+
+# This suite is dependency-free; there should be no node_modules.
+node_modules/
+npm-debug.log*

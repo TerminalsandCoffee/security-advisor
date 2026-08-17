@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Security Consulting Toolkit</title>
+    <meta
+      name="description"
+      content="A small suite of local-first security consulting tools: report intelligence, engagement tracking, and investigation helpers. Everything runs offline in the browser."
+    />
+    <style>
+      :root {
+        --bg: #080b12;
+        --bg-1: #0b1120;
+        --bg-2: #0f1626;
+        --border: rgba(255, 255, 255, 0.08);
+        --border-2: rgba(255, 255, 255, 0.14);
+        --text: #e7ecf5;
+        --text-dim: #9aa6bd;
+        --text-mute: #67728a;
+        --accent: #5b8cff;
+        --accent-2: #22d3ee;
+        --good: #34d399;
+        --radius: 16px;
+        --font: "Segoe UI", Inter, system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; }
+      body {
+        min-height: 100vh;
+        background:
+          radial-gradient(1200px 600px at 80% -10%, rgba(34, 211, 238, 0.06), transparent 60%),
+          radial-gradient(1000px 520px at -10% 8%, rgba(91, 140, 255, 0.08), transparent 55%),
+          var(--bg);
+        color: var(--text);
+        font-family: var(--font);
+        font-size: 15px;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap { max-width: 1040px; margin: 0 auto; padding: 56px 28px 80px; }
+      .brand { display: flex; align-items: center; gap: 14px; margin-bottom: 34px; }
+      .brand-mark {
+        width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center;
+        font-size: 24px; color: #fff;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        box-shadow: 0 8px 22px rgba(34, 211, 238, 0.25);
+      }
+      .brand-title { font-size: 19px; font-weight: 700; letter-spacing: -0.02em; }
+      .brand-sub { font-size: 12px; color: var(--text-mute); letter-spacing: 0.06em; text-transform: uppercase; }
+      .hero h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 12px; max-width: 20ch; }
+      .hero p { color: var(--text-dim); font-size: 16px; max-width: 68ch; margin: 0 0 10px; }
+      .pill {
+        display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--good);
+        background: rgba(52, 211, 153, 0.08); border: 1px solid rgba(52, 211, 153, 0.22);
+        padding: 7px 12px; border-radius: 999px; margin-top: 14px;
+      }
+      .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--good); box-shadow: 0 0 8px var(--good); }
+      .section-label {
+        font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-mute);
+        font-weight: 700; margin: 46px 0 16px;
+      }
+      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; }
+      a.tool {
+        display: flex; flex-direction: column; gap: 12px; text-decoration: none; color: inherit;
+        background: linear-gradient(180deg, var(--bg-2), var(--bg-1));
+        border: 1px solid var(--border); border-radius: var(--radius); padding: 20px;
+        transition: transform 0.12s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+      a.tool:hover { transform: translateY(-3px); border-color: var(--border-2); box-shadow: 0 14px 34px rgba(0, 0, 0, 0.4); }
+      .tool-ico { width: 42px; height: 42px; border-radius: 11px; display: grid; place-items: center; font-size: 21px; background: rgba(91, 140, 255, 0.12); border: 1px solid rgba(91, 140, 255, 0.28); }
+      .tool-name { font-size: 17px; font-weight: 650; }
+      .tool-desc { color: var(--text-dim); font-size: 13.5px; flex: 1; }
+      .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+      .tag { font-size: 10.5px; color: var(--text-dim); background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border); padding: 3px 8px; border-radius: 6px; }
+      .open { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #cfe0ff; }
+      .open .arrow { transition: transform 0.15s ease; }
+      a.tool:hover .open .arrow { transform: translateX(4px); }
+      .foot { margin-top: 54px; padding-top: 22px; border-top: 1px solid var(--border); color: var(--text-mute); font-size: 12.5px; display: flex; flex-wrap: wrap; gap: 8px 20px; }
+      .foot b { color: var(--text-dim); font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="brand">
+        <div class="brand-mark">◈</div>
+        <div>
+          <div class="brand-title">Security Consulting Toolkit</div>
+          <div class="brand-sub">Terminals &amp; Coffee</div>
+        </div>
+      </div>
+
+      <div class="hero">
+        <h1>Local-first tools for security consulting work.</h1>
+        <p>
+          A small suite of purpose-built utilities I reach for during engagements —
+          turning raw reports into client-ready stories, tracking the work, and
+          digging through investigation data. Each tool is a self-contained web app:
+          no accounts, no backend, no data leaving the machine.
+        </p>
+        <span class="pill"><span class="dot"></span> Everything runs offline in your browser</span>
+      </div>
+
+      <div class="section-label">Tools</div>
+      <div class="grid">
+        <a class="tool" href="tools/advisor/index.html">
+          <div class="tool-ico">🛡</div>
+          <div class="tool-name">Security Advisor Dashboard</div>
+          <div class="tool-desc">
+            Upload a customer security report and turn the extracted facts into an
+            accurate, traceable, customer-ready narrative — with Executive and
+            Technical views. Findings are never invented and every statement traces
+            back to its source.
+          </div>
+          <div class="tags">
+            <span class="tag">PDF · CSV · JSON · TXT</span>
+            <span class="tag">Fact / AI / Recommendation</span>
+            <span class="tag">Tell the Story</span>
+          </div>
+          <span class="open">Open tool <span class="arrow">→</span></span>
+        </a>
+
+        <a class="tool" href="tools/kanban/index.html">
+          <div class="tool-ico">🗂</div>
+          <div class="tool-name">Command Center · Kanban</div>
+          <div class="tool-desc">
+            A quick-capture kanban / scrum board for tracking engagement tasks and
+            follow-ups. Draggable cards, editable columns, priorities, due dates,
+            tags, search, and JSON export/import for backups.
+          </div>
+          <div class="tags">
+            <span class="tag">Quick-add</span>
+            <span class="tag">Drag &amp; drop</span>
+            <span class="tag">Export / Import</span>
+          </div>
+          <span class="open">Open tool <span class="arrow">→</span></span>
+        </a>
+
+        <a class="tool" href="tools/raw-data/index.html">
+          <div class="tool-ico">🔎</div>
+          <div class="tool-name">WAF Raw Visit Investigator</div>
+          <div class="tool-desc">
+            An investigation helper for making sense of raw WAF visit data — paste in
+            the raw records and work through them during triage and analysis.
+          </div>
+          <div class="tags">
+            <span class="tag">Investigation</span>
+            <span class="tag">WAF / traffic</span>
+            <span class="tag">Triage</span>
+          </div>
+          <span class="open">Open tool <span class="arrow">→</span></span>
+        </a>
+      </div>
+
+      <div class="foot">
+        <span><b>Local-first</b> — no server, no build step, no API keys.</span>
+        <span><b>Private</b> — uploaded/pasted data stays in your browser.</span>
+        <span><b>Portable</b> — double-click any tool's file to run it.</span>
+      </div>
+    </div>
+  </body>
+</html>

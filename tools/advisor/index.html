@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SecAdvisor — Customer Intelligence Dashboard</title>
+    <meta
+      name="description"
+      content="Local-first security advisor dashboard: turn security reports into a traceable, customer-ready story. Runs entirely in your browser."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- App renders here -->
+    <div id="app" class="app-root"></div>
+
+    <!-- Overlay hosts -->
+    <div id="modal-host"></div>
+    <div id="busy-host"></div>
+    <div id="toast-host" class="toast-host"></div>
+
+    <noscript>
+      <p style="padding: 2rem; color: #e5e7eb; background: #0b1220">
+        This dashboard requires JavaScript. It runs entirely in your browser — no
+        server and no network calls.
+      </p>
+    </noscript>
+
+    <!-- Bundled, offline PDF text extraction (UMD build, exposes window.pdfjsLib) -->
+    <script src="vendor/pdf.min.js"></script>
+
+    <!-- Application modules (classic scripts, load order matters) -->
+    <script src="js/utils.js"></script>
+    <script src="js/dom.js"></script>
+    <script src="js/normalization.js"></script>
+    <script src="js/parsers.js"></script>
+    <script src="js/analysis.js"></script>
+    <script src="js/narrative.js"></script>
+    <script src="js/demo.js"></script>
+    <script src="js/store.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>

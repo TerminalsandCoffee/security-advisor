@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAF's Command Center</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1e2229;
+    --border: #2a2e37;
+    --text: #e6e8eb;
+    --text-dim: #9aa0ab;
+    --accent: #7c9eff;
+    --accent-dim: #3d4a7a;
+    --danger: #ef4444;
+    --low: #22c55e;
+    --medium: #3b82f6;
+    --high: #f59e0b;
+    --urgent: #ef4444;
+    --radius: 10px;
+    --shadow: 0 4px 16px rgba(0,0,0,0.35);
+  }
+  html[data-theme="light"] {
+    --bg: #f4f5f7;
+    --panel: #ffffff;
+    --panel-2: #eef0f3;
+    --border: #dde1e7;
+    --text: #1a1d24;
+    --text-dim: #5c6270;
+    --accent: #3b5bdb;
+    --accent-dim: #dde4ff;
+    --shadow: 0 4px 16px rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  button {
+    font-family: inherit;
+    cursor: pointer;
+  }
+  input, textarea, select, button {
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 10px;
+  }
+  input:focus, textarea:focus, select:focus, button:focus {
+    outline: 2px solid var(--accent-dim);
+    outline-offset: 1px;
+  }
+
+  /* ---------- Topbar ---------- */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 16px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .brand .logo {
+    font-weight: 800;
+    font-size: 17px;
+    letter-spacing: 0.2px;
+    color: var(--accent);
+  }
+  #board-mode-select {
+    font-weight: 600;
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+  .quickadd {
+    display: flex;
+    gap: 6px;
+    flex: 1 1 320px;
+    min-width: 240px;
+  }
+  .quickadd input[type="text"] {
+    flex: 1;
+  }
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .actions input[type="search"] {
+    width: 160px;
+  }
+  .chip {
+    border-radius: 999px;
+    padding: 5px 11px;
+    font-size: 12px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+  .chip.active {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .iconbtn {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 9px;
+    line-height: 1;
+  }
+  .iconbtn:hover, .chip:hover { filter: brightness(1.2); }
+
+  /* ---------- Stats ---------- */
+  .stats-bar {
+    display: flex;
+    gap: 16px;
+    padding: 6px 16px;
+    font-size: 12px;
+    color: var(--text-dim);
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+  }
+  .stats-bar b { color: var(--text); }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:4px; }
+
+  /* ---------- Board ---------- */
+  #board {
+    flex: 1;
+    display: flex;
+    gap: 12px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    align-items: flex-start;
+  }
+  .column {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    width: 280px;
+    min-width: 280px;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .column.drag-over-col {
+    border-color: var(--accent);
+  }
+  .column-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 10px 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .column-header .name {
+    font-weight: 600;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .column-header .count {
+    font-size: 11px;
+    color: var(--text-dim);
+    background: var(--panel-2);
+    border-radius: 999px;
+    padding: 2px 7px;
+  }
+  .col-menu-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    padding: 3px 6px;
+    font-size: 15px;
+  }
+  .col-menu-btn:hover { color: var(--text); }
+  .column-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 40px;
+  }
+  .column-footer {
+    padding: 8px;
+    border-top: 1px solid var(--border);
+  }
+  .add-card-btn {
+    width: 100%;
+    background: transparent;
+    border: 1px dashed var(--border);
+    color: var(--text-dim);
+    text-align: left;
+    padding: 6px 10px;
+  }
+  .add-card-btn:hover { color: var(--text); border-color: var(--accent-dim); }
+
+  .add-column-wrap {
+    flex-shrink: 0;
+    padding-top: 2px;
+  }
+  .add-column-btn {
+    background: var(--panel);
+    border: 1px dashed var(--border);
+    color: var(--text-dim);
+    width: 200px;
+    padding: 10px;
+    border-radius: var(--radius);
+  }
+  .add-column-btn:hover { color: var(--text); }
+
+  /* ---------- Cards ---------- */
+  .card {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--medium);
+    border-radius: 8px;
+    padding: 8px 10px;
+    cursor: grab;
+    box-shadow: var(--shadow);
+  }
+  .card.priority-low { border-left-color: var(--low); }
+  .card.priority-medium { border-left-color: var(--medium); }
+  .card.priority-high { border-left-color: var(--high); }
+  .card.priority-urgent { border-left-color: var(--urgent); }
+  .card.dragging { opacity: 0.4; }
+  .card .title {
+    font-weight: 600;
+    margin-bottom: 4px;
+    word-break: break-word;
+  }
+  .card .notes-preview {
+    font-size: 12px;
+    color: var(--text-dim);
+    white-space: pre-wrap;
+    max-height: 3.6em;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+  .card .meta-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .badge {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 2px 6px;
+    border-radius: 5px;
+    font-weight: 700;
+  }
+  .badge.priority-low { color: var(--low); background: color-mix(in srgb, var(--low) 18%, transparent); }
+  .badge.priority-medium { color: var(--medium); background: color-mix(in srgb, var(--medium) 18%, transparent); }
+  .badge.priority-high { color: var(--high); background: color-mix(in srgb, var(--high) 18%, transparent); }
+  .badge.priority-urgent { color: var(--urgent); background: color-mix(in srgb, var(--urgent) 18%, transparent); }
+  .due-tag {
+    font-size: 11px;
+    color: var(--text-dim);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 2px 6px;
+  }
+  .due-tag.overdue { color: var(--urgent); border-color: var(--urgent); }
+  .due-tag.today { color: var(--high); border-color: var(--high); }
+  .tag-chip {
+    font-size: 11px;
+    color: var(--accent);
+    background: var(--accent-dim);
+    border-radius: 5px;
+    padding: 2px 6px;
+  }
+  .drop-placeholder {
+    height: 44px;
+    border: 1.5px dashed var(--accent);
+    border-radius: 8px;
+    background: var(--accent-dim);
+    opacity: 0.5;
+  }
+
+  /* ---------- Modal ---------- */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+  }
+  .overlay.hidden { display: none; }
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: 460px;
+    max-width: 92vw;
+    max-height: 88vh;
+    overflow-y: auto;
+    padding: 18px;
+    box-shadow: var(--shadow);
+  }
+  .modal h2 { margin: 0 0 12px; font-size: 16px; }
+  .field { margin-bottom: 12px; display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 12px; color: var(--text-dim); }
+  .field input, .field textarea, .field select { width: 100%; }
+  .field textarea { resize: vertical; min-height: 70px; }
+  .field-row { display: flex; gap: 10px; }
+  .field-row .field { flex: 1; }
+  .modal-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+  }
+  .btn {
+    background: var(--accent);
+    color: #0f1115;
+    border: none;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 8px;
+  }
+  .btn.secondary {
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn.danger { background: var(--danger); color: #fff; }
+
+  footer {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-dim);
+    padding: 6px;
+    border-top: 1px solid var(--border);
+    background: var(--panel);
+  }
+
+  #import-input { display: none; }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="brand">
+      <span class="logo">RAF's Command Center</span>
+      <select id="board-mode-select" title="Board mode">
+        <option value="kanban">Kanban</option>
+        <option value="scrum">Scrum</option>
+      </select>
+    </div>
+    <div class="quickadd">
+      <input type="text" id="quickadd-input" placeholder="Quick add a task and hit Enter… (press / to focus)" autocomplete="off">
+      <select id="quickadd-priority" title="Priority">
+        <option value="low">Low</option>
+        <option value="medium" selected>Medium</option>
+        <option value="high">High</option>
+        <option value="urgent">Urgent</option>
+      </select>
+    </div>
+    <div class="actions">
+      <input type="search" id="search-input" placeholder="Search…">
+      <span class="chip" data-filter="all">All</span>
+      <span class="chip" data-filter="low">Low</span>
+      <span class="chip" data-filter="medium">Med</span>
+      <span class="chip" data-filter="high">High</span>
+      <span class="chip" data-filter="urgent">Urgent</span>
+      <span class="chip" data-filter="overdue">⏰ Overdue</span>
+      <button class="iconbtn" id="theme-toggle" title="Toggle theme">🌓</button>
+      <button class="iconbtn" id="export-btn" title="Export backup (.json)">⬇ Export</button>
+      <button class="iconbtn" id="import-btn" title="Import backup (.json)">⬆ Import</button>
+      <input type="file" id="import-input" accept="application/json">
+    </div>
+  </div>
+
+  <div class="stats-bar" id="stats-bar"></div>
+
+  <div id="board"></div>
+
+  <div class="overlay hidden" id="overlay">
+    <div class="modal" id="card-modal">
+      <h2 id="modal-heading">Edit task</h2>
+      <div class="field">
+        <label for="f-title">Title</label>
+        <input type="text" id="f-title" maxlength="200">
+      </div>
+      <div class="field">
+        <label for="f-notes">Notes</label>
+        <textarea id="f-notes" maxlength="4000"></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="f-priority">Priority</label>
+          <select id="f-priority">
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-due">Due date</label>
+          <input type="date" id="f-due">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="f-column">Column</label>
+          <select id="f-column"></select>
+        </div>
+        <div class="field">
+          <label for="f-tags">Tags (comma separated)</label>
+          <input type="text" id="f-tags" placeholder="ops, follow-up">
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn danger" id="delete-card-btn">Delete</button>
+        <div style="display:flex; gap:8px;">
+          <button class="btn secondary" id="cancel-card-btn">Cancel</button>
+          <button class="btn" id="save-card-btn">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>Stored locally in this browser only — use Export regularly to back up. No data leaves this page.</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var LEGACY_STORAGE_KEY = "raf-board-v1";
+  var THEME_KEY = "raf-board-theme";
+  var MODE_KEY = "raf-board-mode";
+  var MODES = ["kanban", "scrum"];
+  var mode = "kanban";
+  var state = null;
+  var activeFilter = "all";
+  var searchTerm = "";
+  var editingCardId = null;
+  var dragCardId = null;
+
+  function storageKeyFor(m) {
+    return "raf-board-v1-" + m;
+  }
+
+  var PRIORITIES = ["low", "medium", "high", "urgent"];
+
+  function uid(prefix) {
+    return (prefix || "id") + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  function esc(s) {
+    var d = document.createElement("div");
+    d.textContent = s == null ? "" : String(s);
+    return d.innerHTML;
+  }
+
+  function todayStr() {
+    var d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+
+  function addDays(n) {
+    var d = new Date();
+    d.setDate(d.getDate() + n);
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+
+  function seedKanban() {
+    var colBacklog = uid("col"), colTodo = uid("col"), colProgress = uid("col"), colBlocked = uid("col"), colDone = uid("col");
+    return {
+      columns: [
+        { id: colBacklog, name: "Backlog" },
+        { id: colTodo, name: "To Do" },
+        { id: colProgress, name: "In Progress" },
+        { id: colBlocked, name: "Blocked" },
+        { id: colDone, name: "Done" }
+      ],
+      cards: [
+        {
+          id: uid("card"), columnId: colBacklog, title: "Welcome to your Kanban board 👋",
+          notes: "This is a demo card — click it to edit, drag it to move between columns, or delete it.\n\nTips:\n• Type in the box at the top and hit Enter to instantly capture a task.\n• Press \"/\" anywhere to jump to that box.\n• Click a card to add notes, a due date, tags, or change priority/column.\n• Use Export regularly to back up your board as a .json file.\n• Switch to Scrum in the dropdown up top for a sprint-style layout — it's a separate board, so nothing here gets mixed in.",
+          priority: "medium", due: "", tags: ["example"], created: Date.now()
+        },
+        {
+          id: uid("card"), columnId: colTodo, title: "Ship the thing",
+          notes: "Example of a high-priority task with a due date.",
+          priority: "high", due: addDays(2), tags: ["demo"], created: Date.now()
+        },
+        {
+          id: uid("card"), columnId: colDone, title: "Set up the board",
+          notes: "You already did this one.",
+          priority: "low", due: "", tags: [], created: Date.now()
+        }
+      ]
+    };
+  }
+
+  function seedScrum() {
+    var colProductBacklog = uid("col"), colSprintBacklog = uid("col"), colProgress = uid("col"), colReview = uid("col"), colDone = uid("col");
+    return {
+      columns: [
+        { id: colProductBacklog, name: "Product Backlog" },
+        { id: colSprintBacklog, name: "Sprint Backlog" },
+        { id: colProgress, name: "In Progress" },
+        { id: colReview, name: "Review" },
+        { id: colDone, name: "Done" }
+      ],
+      cards: [
+        {
+          id: uid("card"), columnId: colProductBacklog, title: "Welcome to your Scrum board 👋",
+          notes: "This board is separate from Kanban — its own columns and cards.\n\nSuggested flow:\n• Everything starts in Product Backlog.\n• Pull items into Sprint Backlog when you commit to them for the sprint.\n• Move to In Progress, then Review, then Done.\n• Use tags to mark a sprint (e.g. \"sprint-12\") so you can search for it later.",
+          priority: "medium", due: "", tags: ["example"], created: Date.now()
+        },
+        {
+          id: uid("card"), columnId: colSprintBacklog, title: "Pick this sprint's work",
+          notes: "Example of a task pulled into the current sprint, with a due date.",
+          priority: "high", due: addDays(7), tags: ["sprint-1"], created: Date.now()
+        },
+        {
+          id: uid("card"), columnId: colDone, title: "Set up the board",
+          notes: "You already did this one.",
+          priority: "low", due: "", tags: [], created: Date.now()
+        }
+      ]
+    };
+  }
+
+  function seedFor(m) {
+    return m === "scrum" ? seedScrum() : seedKanban();
+  }
+
+  function loadBoard(m) {
+    try {
+      var raw = localStorage.getItem(storageKeyFor(m));
+      if (!raw && m === "kanban") {
+        // Migrate pre-mode-switcher data (single board) into the Kanban slot.
+        raw = localStorage.getItem(LEGACY_STORAGE_KEY);
+      }
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.columns) && Array.isArray(parsed.cards)) return parsed;
+      }
+    } catch (e) { console.warn("RAF's Command Center: could not read localStorage", e); }
+    return seedFor(m);
+  }
+
+  function saveState() {
+    try {
+      localStorage.setItem(storageKeyFor(mode), JSON.stringify(state));
+    } catch (e) {
+      console.warn("RAF's Command Center: could not save to localStorage", e);
+    }
+  }
+
+  function cardsInColumn(colId) {
+    return state.cards.filter(function (c) { return c.columnId === colId; });
+  }
+
+  function passesFilters(card) {
+    if (activeFilter === "overdue") {
+      if (!card.due || card.due >= todayStr()) return false;
+    } else if (activeFilter !== "all") {
+      if (card.priority !== activeFilter) return false;
+    }
+    if (searchTerm) {
+      var hay = (card.title + " " + (card.notes || "") + " " + (card.tags || []).join(" ")).toLowerCase();
+      if (hay.indexOf(searchTerm) === -1) return false;
+    }
+    return true;
+  }
+
+  function dueTagHtml(due) {
+    if (!due) return "";
+    var cls = "due-tag";
+    var today = todayStr();
+    var label = due;
+    if (due < today) { cls += " overdue"; label = "⏰ " + due; }
+    else if (due === today) { cls += " today"; label = "Today"; }
+    return '<span class="' + cls + '">' + esc(label) + "</span>";
+  }
+
+  function cardHtml(card) {
+    var tags = (card.tags || []).map(function (t) {
+      return '<span class="tag-chip">#' + esc(t) + "</span>";
+    }).join("");
+    return (
+      '<div class="card priority-' + card.priority + '" draggable="true" data-card-id="' + card.id + '">' +
+        '<div class="title">' + esc(card.title) + "</div>" +
+        (card.notes ? '<div class="notes-preview">' + esc(card.notes) + "</div>" : "") +
+        '<div class="meta-row">' +
+          '<span class="badge priority-' + card.priority + '">' + card.priority + "</span>" +
+          dueTagHtml(card.due) +
+          tags +
+        "</div>" +
+      "</div>"
+    );
+  }
+
+  function columnHtml(col) {
+    var cards = cardsInColumn(col.id).filter(passesFilters);
+    var cardsHtml = cards.map(cardHtml).join("");
+    return (
+      '<div class="column" data-col-id="' + col.id + '">' +
+        '<div class="column-header">' +
+          '<span class="name" title="' + esc(col.name) + '">' + esc(col.name) + "</span>" +
+          '<span class="count">' + cards.length + "</span>" +
+          '<button class="col-menu-btn" data-action="rename-col" data-col-id="' + col.id + '" title="Rename">✎</button>' +
+          '<button class="col-menu-btn" data-action="move-col-left" data-col-id="' + col.id + '" title="Move left">◀</button>' +
+          '<button class="col-menu-btn" data-action="move-col-right" data-col-id="' + col.id + '" title="Move right">▶</button>' +
+          '<button class="col-menu-btn" data-action="delete-col" data-col-id="' + col.id + '" title="Delete column">✕</button>' +
+        "</div>" +
+        '<div class="column-body" data-col-id="' + col.id + '">' + cardsHtml + "</div>" +
+        '<div class="column-footer">' +
+          '<button class="add-card-btn" data-action="add-card" data-col-id="' + col.id + '">+ Add task</button>' +
+        "</div>" +
+      "</div>"
+    );
+  }
+
+  function render() {
+    var board = document.getElementById("board");
+    var html = state.columns.map(columnHtml).join("");
+    html += '<div class="add-column-wrap"><button class="add-column-btn" id="add-column-btn">+ Add column</button></div>';
+    board.innerHTML = html;
+    renderStats();
+    document.querySelectorAll(".chip[data-filter]").forEach(function (chip) {
+      chip.classList.toggle("active", chip.getAttribute("data-filter") === activeFilter);
+    });
+  }
+
+  function renderStats() {
+    var total = state.cards.length;
+    var counts = { low: 0, medium: 0, high: 0, urgent: 0 };
+    var overdue = 0;
+    var today = todayStr();
+    state.cards.forEach(function (c) {
+      if (counts[c.priority] !== undefined) counts[c.priority]++;
+      if (c.due && c.due < today) overdue++;
+    });
+    var bar = document.getElementById("stats-bar");
+    bar.innerHTML =
+      "<span><b>" + total + "</b> total</span>" +
+      '<span><span class="dot" style="background:var(--low)"></span>' + counts.low + " low</span>" +
+      '<span><span class="dot" style="background:var(--medium)"></span>' + counts.medium + " medium</span>" +
+      '<span><span class="dot" style="background:var(--high)"></span>' + counts.high + " high</span>" +
+      '<span><span class="dot" style="background:var(--urgent)"></span>' + counts.urgent + " urgent</span>" +
+      (overdue ? '<span style="color:var(--urgent)"><b>' + overdue + "</b> overdue</span>" : "");
+  }
+
+  // ---------- Card CRUD ----------
+
+  function openModalForNew(colId) {
+    editingCardId = null;
+    document.getElementById("modal-heading").textContent = "New task";
+    document.getElementById("f-title").value = "";
+    document.getElementById("f-notes").value = "";
+    document.getElementById("f-priority").value = "medium";
+    document.getElementById("f-due").value = "";
+    document.getElementById("f-tags").value = "";
+    populateColumnSelect(colId);
+    document.getElementById("delete-card-btn").style.display = "none";
+    showModal();
+    document.getElementById("f-title").focus();
+  }
+
+  function openModalForEdit(cardId) {
+    var card = state.cards.find(function (c) { return c.id === cardId; });
+    if (!card) return;
+    editingCardId = cardId;
+    document.getElementById("modal-heading").textContent = "Edit task";
+    document.getElementById("f-title").value = card.title;
+    document.getElementById("f-notes").value = card.notes || "";
+    document.getElementById("f-priority").value = card.priority;
+    document.getElementById("f-due").value = card.due || "";
+    document.getElementById("f-tags").value = (card.tags || []).join(", ");
+    populateColumnSelect(card.columnId);
+    document.getElementById("delete-card-btn").style.display = "";
+    showModal();
+    document.getElementById("f-title").focus();
+  }
+
+  function populateColumnSelect(selectedId) {
+    var sel = document.getElementById("f-column");
+    sel.innerHTML = state.columns.map(function (c) {
+      return '<option value="' + c.id + '"' + (c.id === selectedId ? " selected" : "") + ">" + esc(c.name) + "</option>";
+    }).join("");
+  }
+
+  function showModal() { document.getElementById("overlay").classList.remove("hidden"); }
+  function hideModal() { document.getElementById("overlay").classList.add("hidden"); editingCardId = null; }
+
+  function saveModal() {
+    var title = document.getElementById("f-title").value.trim();
+    if (!title) { document.getElementById("f-title").focus(); return; }
+    var notes = document.getElementById("f-notes").value;
+    var priority = document.getElementById("f-priority").value;
+    var due = document.getElementById("f-due").value;
+    var columnId = document.getElementById("f-column").value;
+    var tags = document.getElementById("f-tags").value.split(",").map(function (t) { return t.trim(); }).filter(Boolean);
+
+    if (editingCardId) {
+      var card = state.cards.find(function (c) { return c.id === editingCardId; });
+      if (card) {
+        card.title = title; card.notes = notes; card.priority = priority;
+        card.due = due; card.columnId = columnId; card.tags = tags;
+      }
+    } else {
+      state.cards.push({
+        id: uid("card"), columnId: columnId, title: title, notes: notes,
+        priority: priority, due: due, tags: tags, created: Date.now()
+      });
+    }
+    saveState();
+    render();
+    hideModal();
+  }
+
+  function deleteCard() {
+    if (!editingCardId) return;
+    if (!confirm("Delete this task? This cannot be undone.")) return;
+    state.cards = state.cards.filter(function (c) { return c.id !== editingCardId; });
+    saveState();
+    render();
+    hideModal();
+  }
+
+  function quickAdd() {
+    var input = document.getElementById("quickadd-input");
+    var title = input.value.trim();
+    if (!title) return;
+    var priority = document.getElementById("quickadd-priority").value;
+    var firstCol = state.columns[0];
+    if (!firstCol) return;
+    state.cards.push({
+      id: uid("card"), columnId: firstCol.id, title: title, notes: "",
+      priority: priority, due: "", tags: [], created: Date.now()
+    });
+    input.value = "";
+    saveState();
+    render();
+  }
+
+  // ---------- Column CRUD ----------
+
+  function addColumn() {
+    var name = prompt("Column name:");
+    if (!name) return;
+    state.columns.push({ id: uid("col"), name: name.trim().slice(0, 60) });
+    saveState();
+    render();
+  }
+
+  function renameColumn(colId) {
+    var col = state.columns.find(function (c) { return c.id === colId; });
+    if (!col) return;
+    var name = prompt("Rename column:", col.name);
+    if (!name) return;
+    col.name = name.trim().slice(0, 60);
+    saveState();
+    render();
+  }
+
+  function deleteColumn(colId) {
+    var col = state.columns.find(function (c) { return c.id === colId; });
+    if (!col) return;
+    var count = cardsInColumn(colId).length;
+    var msg = count
+      ? 'Delete column "' + col.name + '" and its ' + count + " task(s)? This cannot be undone."
+      : 'Delete column "' + col.name + '"?';
+    if (!confirm(msg)) return;
+    state.columns = state.columns.filter(function (c) { return c.id !== colId; });
+    state.cards = state.cards.filter(function (c) { return c.columnId !== colId; });
+    saveState();
+    render();
+  }
+
+  function moveColumn(colId, dir) {
+    var idx = state.columns.findIndex(function (c) { return c.id === colId; });
+    var newIdx = idx + dir;
+    if (idx === -1 || newIdx < 0 || newIdx >= state.columns.length) return;
+    var tmp = state.columns[idx];
+    state.columns[idx] = state.columns[newIdx];
+    state.columns[newIdx] = tmp;
+    saveState();
+    render();
+  }
+
+  // ---------- Drag & drop ----------
+
+  function getDragAfterElement(container, y) {
+    var els = Array.prototype.slice.call(container.querySelectorAll(".card:not(.dragging)"));
+    var closest = { offset: -Infinity, element: null };
+    els.forEach(function (el) {
+      var box = el.getBoundingClientRect();
+      var offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > closest.offset) {
+        closest = { offset: offset, element: el };
+      }
+    });
+    return closest.element;
+  }
+
+  function attachDnd() {
+    document.querySelectorAll(".card").forEach(function (cardEl) {
+      cardEl.addEventListener("dragstart", function () {
+        dragCardId = cardEl.getAttribute("data-card-id");
+        cardEl.classList.add("dragging");
+      });
+      cardEl.addEventListener("dragend", function () {
+        cardEl.classList.remove("dragging");
+        dragCardId = null;
+      });
+      cardEl.addEventListener("click", function (e) {
+        if (cardEl.classList.contains("dragging")) return;
+        openModalForEdit(cardEl.getAttribute("data-card-id"));
+      });
+    });
+
+    document.querySelectorAll(".column-body").forEach(function (body) {
+      body.addEventListener("dragover", function (e) {
+        e.preventDefault();
+        var after = getDragAfterElement(body, e.clientY);
+        var draggingEl = document.querySelector(".card.dragging");
+        if (!draggingEl) return;
+        if (after == null) body.appendChild(draggingEl);
+        else body.insertBefore(draggingEl, after);
+      });
+      body.addEventListener("drop", function (e) {
+        e.preventDefault();
+        if (!dragCardId) return;
+        var colId = body.getAttribute("data-col-id");
+        var card = state.cards.find(function (c) { return c.id === dragCardId; });
+        if (!card) return;
+        card.columnId = colId;
+        // Reorder state.cards to match DOM order within this column for persistence
+        var orderedIds = Array.prototype.slice.call(body.querySelectorAll(".card")).map(function (el) {
+          return el.getAttribute("data-card-id");
+        });
+        var others = state.cards.filter(function (c) { return c.columnId !== colId; });
+        var inCol = orderedIds.map(function (id) {
+          return state.cards.find(function (c) { return c.id === id; });
+        }).filter(Boolean);
+        state.cards = others.concat(inCol);
+        saveState();
+        render();
+      });
+    });
+  }
+
+  // ---------- Event wiring ----------
+
+  function wireEvents() {
+    document.getElementById("quickadd-input").addEventListener("keydown", function (e) {
+      if (e.key === "Enter") quickAdd();
+    });
+
+    document.getElementById("search-input").addEventListener("input", function (e) {
+      searchTerm = e.target.value.trim().toLowerCase();
+      render();
+      attachDnd();
+    });
+
+    document.querySelectorAll(".chip[data-filter]").forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        activeFilter = chip.getAttribute("data-filter");
+        render();
+        attachDnd();
+      });
+    });
+
+    document.getElementById("theme-toggle").addEventListener("click", function () {
+      var html = document.documentElement;
+      var next = html.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      html.setAttribute("data-theme", next);
+      try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+    });
+
+    document.getElementById("board-mode-select").addEventListener("change", function (e) {
+      switchMode(e.target.value);
+    });
+
+    document.getElementById("export-btn").addEventListener("click", function () {
+      var blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = "rafs-command-center-backup-" + todayStr() + ".json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById("import-btn").addEventListener("click", function () {
+      document.getElementById("import-input").click();
+    });
+
+    document.getElementById("import-input").addEventListener("change", function (e) {
+      var file = e.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        try {
+          var parsed = JSON.parse(reader.result);
+          if (!parsed || !Array.isArray(parsed.columns) || !Array.isArray(parsed.cards)) {
+            throw new Error("Invalid format");
+          }
+          if (!confirm("Import will replace your current board. Continue?")) return;
+          state = parsed;
+          saveState();
+          render();
+          attachDnd();
+        } catch (err) {
+          alert("Could not import file: " + err.message);
+        }
+        e.target.value = "";
+      };
+      reader.readAsText(file);
+    });
+
+    document.getElementById("board").addEventListener("click", function (e) {
+      var target = e.target;
+      var action = target.getAttribute("data-action");
+      if (!action) {
+        if (target.id === "add-column-btn") addColumn();
+        return;
+      }
+      var colId = target.getAttribute("data-col-id");
+      if (action === "add-card") openModalForNew(colId);
+      else if (action === "rename-col") renameColumn(colId);
+      else if (action === "move-col-left") moveColumn(colId, -1);
+      else if (action === "move-col-right") moveColumn(colId, 1);
+      else if (action === "delete-col") deleteColumn(colId);
+    });
+
+    document.getElementById("save-card-btn").addEventListener("click", saveModal);
+    document.getElementById("delete-card-btn").addEventListener("click", deleteCard);
+    document.getElementById("cancel-card-btn").addEventListener("click", hideModal);
+    document.getElementById("overlay").addEventListener("click", function (e) {
+      if (e.target.id === "overlay") hideModal();
+    });
+
+    document.addEventListener("keydown", function (e) {
+      var overlayOpen = !document.getElementById("overlay").classList.contains("hidden");
+      if (e.key === "Escape" && overlayOpen) { hideModal(); return; }
+      var tag = (e.target.tagName || "").toLowerCase();
+      var typing = tag === "input" || tag === "textarea" || e.target.isContentEditable;
+      if (!typing && (e.key === "/" || e.key === "n")) {
+        e.preventDefault();
+        document.getElementById("quickadd-input").focus();
+      }
+    });
+  }
+
+  function titleFor(m) {
+    return "RAF's Command Center — " + (m === "scrum" ? "Scrum" : "Kanban");
+  }
+
+  function switchMode(newMode) {
+    if (MODES.indexOf(newMode) === -1 || newMode === mode) return;
+    hideModal();
+    mode = newMode;
+    try { localStorage.setItem(MODE_KEY, mode); } catch (e) {}
+    state = loadBoard(mode);
+    document.title = titleFor(mode);
+    render();
+    attachDnd();
+  }
+
+  function init() {
+    try {
+      var savedTheme = localStorage.getItem(THEME_KEY);
+      if (savedTheme) document.documentElement.setAttribute("data-theme", savedTheme);
+      var savedMode = localStorage.getItem(MODE_KEY);
+      if (savedMode && MODES.indexOf(savedMode) !== -1) mode = savedMode;
+    } catch (e) {}
+    document.getElementById("board-mode-select").value = mode;
+    document.title = titleFor(mode);
+    state = loadBoard(mode);
+    render();
+    attachDnd();
+    wireEvents();
+  }
+
+  document.addEventListener("DOMContentLoaded", init);
+})();
+</script>
+</body>
+</html>
